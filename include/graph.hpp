@@ -15,15 +15,16 @@ namespace yLAB {
 
 template <std::integral T>
 class Graph {
+ public:
+  enum class Color : char {Grey, Blue, Red}; // for coloring vertices
  private:
   using size_type     = std::size_t;
   using value_type    = T;
   using vertices_pair = std::pair<value_type, value_type>;
   using vertices_map  = std::unordered_map<value_type, size_type>;
-
+  using painting_map  = std::map<value_type, std::pair<Color, size_type>>;
   static constexpr size_type NLine = 4; // table lines
 
-  enum class Color : char {Grey, Blue, Red}; // for coloring vertices
  public:
   constexpr Graph() = default;
 
@@ -50,25 +51,40 @@ class Graph {
     fill_table(ls, vertices, save_order);
   }
 
-  std::optional<std::map<value_type, Color>> is_bipartite() const {
-    std::vector colors {Color::Blue, Color::Red};
+  std::optional<std::vector<std::pair<value_type, Color>>>
+  is_bipartite() const {
+    painting_map visited;
     std::stack<value_type> vertices;
-    std::map<value_type, Color> visited;
-    std::for_each(table_.begin(), table_.begin() + nvertices_,
-                  [&vertices, &visited](auto &&val) { 
-                    vertices.push(val);
-                    visited[val] = Color::Grey;
-                  });
- 
-    for (size_type col_id = 0; !vertices.empty(); col_id = (col_id + 1) % 2) {
+    std::for_each(table_.begin() + offset_, table_.begin() + offset_ + nvertices_,
+                                  [&visited, id = 0](auto &&val) mutable {
+                                    visited[val] = {Color::Grey, id++};
+                                  });
+    size_type ost = nvertices_ % 2 == 0 ? 0 : 1;
+    vertices.push(table_[offset_]);
+    visited[table_[offset_]].first = Color::Blue; // first vertex is always blue
+    while (!vertices.empty()) {
       auto top = vertices.top();
       vertices.pop();
-      
-      visited[top] = colors[col_id];
 
-//      for (auto curr_id = table_[top + offset_ - 1]; curr_id != top - 1;) {}
+      for (size_type curr_id = table_[visited[top].second + offset_ * 2]; curr_id != visited[top].second;
+                curr_id = table_[curr_id + offset_ * 2]) {
+        if (curr_id % 2 == ost) {
+          if (!is_painted(top, table_[curr_id + offset_ + 1], visited, vertices)) {
+            return {};
+          }
+        } else {
+          if (!is_painted(top, table_[curr_id + offset_ - 1], visited, vertices)) {
+            return {};
+          }
+        }
+      }
     }
-    return {};
+    std::vector<std::pair<value_type, Color>> painted_vertices;
+    std::transform(visited.begin(), visited.end(), std::back_inserter(painted_vertices),
+                  [](auto &&pair) {
+                    return std::make_pair(pair.first, pair.second.first);
+                  });
+    return {painted_vertices};
   }
 
  private:
@@ -99,6 +115,22 @@ class Graph {
                                  table_id < nvertices_; ++table_id) {
       table_[table_id + offset] = vert_data[order[table_id]];
     }
+  }
+
+  bool is_painted(value_type top_vert, value_type neighbour_vert,
+                  painting_map &p_map, std::stack<value_type> &vertices) const {
+    auto draw_neighbour_vertex = [](Color own_color) {
+      return own_color == Color::Blue ? Color::Red : Color::Blue;
+    };
+    
+    if (p_map[neighbour_vert].first == Color::Grey) {
+      p_map[neighbour_vert].first = draw_neighbour_vertex(p_map[top_vert].first);
+      vertices.push(neighbour_vert);
+    } else if (p_map[neighbour_vert].first == p_map[top_vert].first) {
+      return false;
+    }
+    return true;
+
   }
 
  private:
