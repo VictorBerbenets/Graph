@@ -23,8 +23,8 @@ class Graph {
   using vertices_pair = std::pair<value_type, value_type>;
   using vertices_map  = std::unordered_map<value_type, size_type>;
   using painting_map  = std::map<value_type, std::pair<Color, size_type>>;
-  static constexpr size_type NLine = 4; // table lines
 
+  static constexpr size_type NLine = 4; // table lines
  public:
   constexpr Graph() = default;
 
@@ -141,4 +141,3 @@ class Graph {
 };
 
 } // <--- namespace yLAB
-
