@@ -1,7 +1,11 @@
 #include <vector>
 #include <concepts>
 #include <random>
+#include <fstream>
 #include <filesystem>
+#include <unordered_set>
+#include <utility>
+#include <string>
 
 namespace testing {
 
@@ -17,8 +21,12 @@ class generator final {
   using value_type        = T;
   using generator_type    = std::mt19937;
   using distribution_type = std::uniform_int_distribution<T>;
-
-  value_type random_value(value_type min_val, value_type max_val) {
+  
+  static constexpr size_type MAX_VERTECES_NUMBER = 1000;
+  static constexpr size_type MIN_VERTECES_NUMBER = 1000;
+  
+  template <std::integral U>
+  U random_value(U min_val, U max_val) {
       distribution_type distr(min_val, max_val);
       return distr(generator_);
   }
@@ -45,7 +53,50 @@ class generator final {
   }
 
   void generate_bipartite_graph(size_type test_number) {
+    auto verteces_number = random_value(MIN_VERTECES_NUMBER, MAX_VERTECES_NUMBER);  
+    auto first_share_size  = random_value(1ul, verteces_number - 1);
+    auto second_share_size = verteces_number - first_share_size;
 
+    std::vector<value_type> first_share(first_share_size);
+    std::vector<value_type> second_share(second_share_size);
+    
+    value_type value {1};
+    std::generate(first_share.begin(), first_share.end(),
+                  [&value]() { return value++; });
+    std::generate(second_share.begin(), second_share.end(),
+                  [&value]() { return value++; });
+
+    std::vector<std::pair<value_type, value_type>> edges;
+    for (auto &&val : first_share) {
+      std::unordered_set<value_type> used_vertices;
+      for (auto pair_counter = 0, max_pairs = random_value(1ul, second_share.size());
+           pair_counter < max_pairs; ++pair_counter) {
+        auto second_vertex = *std::find_if(second_share.begin(), second_share.end(),
+                              [&used_vertices](auto &&val) {
+                                return used_vertices.find(val) == used_vertices.end();
+                              });
+        used_vertices.insert(second_vertex);
+        edges.push_back(std::make_pair(val, second_vertex));
+      }
+    }
+
+    std::string test_name = "test" + std::to_string(test_number) + ".txt";
+    std::string ans_name  = "ans" + std::to_string(test_number) + ".txt";
+    std::ofstream test_file {dirs::tests_dir + test_name};
+    std::ofstream ans_file  {dirs::ans_dir + ans_name};
+
+    for (auto &&[v1, v2] : edges) {
+      test_file << v1 << " -- " << v2 << ", " << random_value(0, 100) << std::endl;
+    }
+    
+    std::for_each(first_share.begin(), first_share.end(), [&ans_file](auto &&val) {
+      ans_file << val << " b ";
+    });
+
+    std::for_each(second_share.begin(), second_share.end(), [&ans_file](auto &&val) {
+      ans_file << val << " r ";
+    });
+    ans_file << std::endl;
   }
 
  public:
