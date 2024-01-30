@@ -20,17 +20,22 @@ concept vertex_iterator = std::forward_iterator<IterT> &&
                           std::same_as<typename std::iterator_traits<IterT>::value_type,
                                        std::pair<VertexT, VertexT>>;
 
-template <std::integral T>
+
+template <std::integral T, typename VertexLoad = int,
+          typename EdgeLoad = int>
 class Graph {
  public:
   enum class Color : char {Grey, Blue, Red}; // for coloring vertices
- private:
+
   using size_type     = std::size_t;
   using value_type    = T;
   using vertices_pair = std::pair<value_type, value_type>;
   using vertices_map  = std::unordered_map<value_type, size_type>;
   using painting_map  = std::map<value_type, std::pair<Color, size_type>>;
-
+  using vertices_load = std::unordered_map<value_type, VertexLoad>;
+  using edges_load    = std::unordered_map<value_type, std::pair<size_type,
+                                                                 EdgeLoad>>;
+ private:
   static constexpr size_type NLine = 4; // table lines
  public:
   constexpr Graph() = default;
@@ -64,8 +69,6 @@ class Graph {
 
   std::optional<std::vector<std::pair<value_type, Color>>>
   is_bipartite() const {
-    if (table_.empty()) { return {}; }
-
     painting_map visited;
     auto begin_v = table_.begin() + offset_;
     auto end_v   = begin_v + nvertices_;
@@ -74,7 +77,6 @@ class Graph {
                                     visited[val] = {Color::Grey, id++};
                                   });
 
-    size_type ost = nvertices_ % 2 == 0 ? 0 : 1;
     std::stack<value_type> vertices;
     while(!not_visited.empty()) {
       auto n_visited_v = not_visited.begin();
@@ -87,24 +89,30 @@ class Graph {
 
         for (size_type curr_id = table_[visited[top].second + offset_ * 2];
              curr_id != visited[top].second; curr_id = table_[curr_id + offset_ * 2]) {
-          if (curr_id % 2 == ost) {
-            if (!is_right_painted(top, table_[curr_id + offset_ + 1], visited, vertices)) {
-              return {};
-            }
-          } else {
-            if (!is_right_painted(top, table_[curr_id + offset_ - 1], visited, vertices)) {
-              return {};
-            }
-          }
+          auto table_id = curr_id + offset_ + get_edge_dir(curr_id);
+          if (!is_right_painted(top, table_[table_id],
+                                visited, vertices)) { return {}; }
         }
       }
     }
+
     std::vector<std::pair<value_type, Color>> painted_vertices;
     std::transform(visited.begin(), visited.end(), std::back_inserter(painted_vertices),
                   [](auto &&pair) {
                     return std::make_pair(pair.first, pair.second.first);
                   });
     return {painted_vertices};
+  }
+
+  std::optional<const EdgeLoad&> edge_load(const vertices_pair &v_pair) const {
+    return e_load_.find(v_pair);
+  }
+
+  std::optional<EdgeLoad&> edge_load(const vertices_pair &v_pair) {
+    if (auto vert_it = e_load_.find(v_pair.first); vert_it != e_load_.end()) {
+      // TODO // 
+    }
+    return {};
   }
 
  private:
@@ -144,7 +152,7 @@ class Graph {
     auto draw_neighbour_vertex = [](Color own_color) {
       return own_color == Color::Blue ? Color::Red : Color::Blue;
     };
-    
+ 
     if (p_map[neighbour_vert].first == Color::Grey) {
       p_map[neighbour_vert].first = draw_neighbour_vertex(p_map[top_vert].first);
       vertices.push(neighbour_vert);
@@ -154,11 +162,17 @@ class Graph {
     return true;
   }
 
+  int get_edge_dir(size_type curr_id) const noexcept {
+    return curr_id % 2 == nvertices_ % 2 ? 1 : -1;
+  }
+  
  private:
+  edges_load e_load_;
+  vertices_load v_load_;
   std::vector<value_type> table_;
-  size_type nvertices_;
-  size_type nedges_;
-  size_type offset_;
+  size_type nvertices_ = 0;
+  size_type nedges_    = 0;
+  size_type offset_    = 0;
 };
 
 } // <--- namespace yLAB
