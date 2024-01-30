@@ -88,11 +88,11 @@ class Graph {
         for (size_type curr_id = table_[visited[top].second + offset_ * 2];
              curr_id != visited[top].second; curr_id = table_[curr_id + offset_ * 2]) {
           if (curr_id % 2 == ost) {
-            if (!is_painted(top, table_[curr_id + offset_ + 1], visited, vertices)) {
+            if (!is_right_painted(top, table_[curr_id + offset_ + 1], visited, vertices)) {
               return {};
             }
           } else {
-            if (!is_painted(top, table_[curr_id + offset_ - 1], visited, vertices)) {
+            if (!is_right_painted(top, table_[curr_id + offset_ - 1], visited, vertices)) {
               return {};
             }
           }
@@ -139,7 +139,7 @@ class Graph {
     }
   }
 
-  bool is_painted(value_type top_vert, value_type neighbour_vert,
+  bool is_right_painted(value_type top_vert, value_type neighbour_vert,
                   painting_map &p_map, std::stack<value_type> &vertices) const {
     auto draw_neighbour_vertex = [](Color own_color) {
       return own_color == Color::Blue ? Color::Red : Color::Blue;
