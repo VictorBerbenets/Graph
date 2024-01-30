@@ -10,6 +10,7 @@
 #include <initializer_list>
 #include <unordered_map>
 #include <type_traits>
+#include <set>
 #include <map>
 
 namespace yLAB {
@@ -43,18 +44,18 @@ class Graph {
     vertices_map vertices;
     std::vector<value_type> save_order;
 
-    auto insert_if = [vert_id = 0, &vertices, &save_order]
-                     (const value_type &vertex) mutable {
-      if (vertices.find(vertex) == vertices.end()) {
-        save_order.push_back(vertex);
-        vertices.insert({vertex, vert_id++});
+    auto insert_if = [vert_id = 0ul, &vertices, &save_order]
+                     (const  vertices_pair &pair) mutable {
+      std::vector collector {pair.first, pair.second};
+      for (auto &&vertex : collector) {
+        if (vertices.find(vertex) == vertices.end()) {
+          save_order.push_back(vertex);
+          vertices.insert({vertex, vert_id++});
+        }
       }
     };
 
-    std::for_each(begin, end, [&insert_if](auto &&pair) {
-                                insert_if(pair.first);
-                                insert_if(pair.second); 
-                              });
+    std::for_each(begin, end, insert_if);
 
     nvertices_ = vertices.size();
     offset_    = nvertices_ + nedges_ * 2;
@@ -66,26 +67,34 @@ class Graph {
     if (table_.empty()) { return {}; }
 
     painting_map visited;
-    std::stack<value_type> vertices;
-    std::for_each(table_.begin() + offset_, table_.begin() + offset_ + nvertices_,
-                                  [&visited, id = 0](auto &&val) mutable {
+    auto begin_v = table_.begin() + offset_;
+    auto end_v   = begin_v + nvertices_;
+    std::set<value_type> not_visited(begin_v, end_v);
+    std::for_each(begin_v, end_v, [&visited, id = 0](auto &&val) mutable {
                                     visited[val] = {Color::Grey, id++};
                                   });
+
     size_type ost = nvertices_ % 2 == 0 ? 0 : 1;
-    vertices.push(table_[offset_]);
-    visited[table_[offset_]].first = Color::Blue; // first vertex is always blue
-    while (!vertices.empty()) {
-      auto top = vertices.top();
-      vertices.pop();
-      for (size_type curr_id = table_[visited[top].second + offset_ * 2]; curr_id != visited[top].second;
-                curr_id = table_[curr_id + offset_ * 2]) {
-        if (curr_id % 2 == ost) {
-          if (!is_painted(top, table_[curr_id + offset_ + 1], visited, vertices)) {
-            return {};
-          }
-        } else {
-          if (!is_painted(top, table_[curr_id + offset_ - 1], visited, vertices)) {
-            return {};
+    std::stack<value_type> vertices;
+    while(!not_visited.empty()) {
+      auto n_visited_v = not_visited.begin();
+      vertices.push(*n_visited_v);
+      visited[*n_visited_v].first = Color::Blue; // first vertex is always blue
+      while (!vertices.empty()) {
+        auto top = vertices.top();
+        vertices.pop();
+        not_visited.erase(top);
+
+        for (size_type curr_id = table_[visited[top].second + offset_ * 2];
+             curr_id != visited[top].second; curr_id = table_[curr_id + offset_ * 2]) {
+          if (curr_id % 2 == ost) {
+            if (!is_painted(top, table_[curr_id + offset_ + 1], visited, vertices)) {
+              return {};
+            }
+          } else {
+            if (!is_painted(top, table_[curr_id + offset_ - 1], visited, vertices)) {
+              return {};
+            }
           }
         }
       }
@@ -104,18 +113,18 @@ class Graph {
                   vertices_map &vert_data,
                   const std::vector<value_type> &order) {
     table_.assign(offset_ * NLine, value_type{0});
- 
+    // filling first line
     std::generate(table_.begin(), table_.begin() + offset_,
-                  [id = 0]() mutable { return id++; }); // filling first line
-
-    std::copy(order.begin(), order.end(), table_.begin() + offset_); // saving vertices
+                  [id = 0]() mutable { return id++; }); 
+    // filling second line
+    std::copy(order.begin(), order.end(), table_.begin() + offset_);
     std::for_each(begin, end, [id = nvertices_ + offset_, &table = table_]
                               (auto &&pair) mutable {
                                 table[id++] = pair.first;
                                 table[id++] = pair.second;
                               });
-
-    auto map_copy = vert_data; // filling third and fourth lines
+    // filling third line
+    auto map_copy = vert_data; 
     for (size_type curr_id = nvertices_; curr_id < offset_; ++curr_id) {
       auto vertex = table_[curr_id + offset_];
       table_[vert_data[vertex] + offset_ * 2] = curr_id;
@@ -123,7 +132,7 @@ class Graph {
       table_[curr_id + offset_ * 3] = vert_data[vertex];
       vert_data[vertex] = curr_id;
     }
-
+    // filling fourth line
     for (size_type table_id = 0, offset = offset_ * 3;
                                  table_id < nvertices_; ++table_id) {
       table_[table_id + offset] = vert_data[order[table_id]];
