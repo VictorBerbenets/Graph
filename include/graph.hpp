@@ -9,9 +9,15 @@
 #include <utility>
 #include <initializer_list>
 #include <unordered_map>
+#include <type_traits>
 #include <map>
 
 namespace yLAB {
+
+template <typename IterT, typename VertexT>
+concept vertex_iterator = std::forward_iterator<IterT> &&
+                          std::same_as<typename std::iterator_traits<IterT>::value_type,
+                                       std::pair<VertexT, VertexT>>;
 
 template <std::integral T>
 class Graph {
@@ -28,31 +34,37 @@ class Graph {
  public:
   constexpr Graph() = default;
 
-  Graph(std::initializer_list<vertices_pair> ls): nedges_ {ls.size()} {
+  Graph(std::initializer_list<vertices_pair> ls)
+      : Graph(ls.begin(), ls.end()) {}
+
+  template <vertex_iterator<value_type> Iter>
+  Graph(Iter begin, Iter end)
+      : nedges_ {static_cast<size_type>(std::distance(begin, end))} {
     vertices_map vertices;
     std::vector<value_type> save_order;
 
-    auto insert_if = [&vertices, &save_order](const value_type &vertex,
-                                              size_type &vert_id) {
+    auto insert_if = [vert_id = 0, &vertices, &save_order]
+                     (const value_type &vertex) mutable {
       if (vertices.find(vertex) == vertices.end()) {
         save_order.push_back(vertex);
-        vertices.insert({vertex, vert_id});
-        ++vert_id;
+        vertices.insert({vertex, vert_id++});
       }
     };
 
-    for (size_type vert_id = 0; auto &&[v1, v2] : ls) {
-      insert_if(v1, vert_id);
-      insert_if(v2, vert_id);
-    }
+    std::for_each(begin, end, [&insert_if](auto &&pair) {
+                                insert_if(pair.first);
+                                insert_if(pair.second); 
+                              });
 
     nvertices_ = vertices.size();
     offset_    = nvertices_ + nedges_ * 2;
-    fill_table(ls, vertices, save_order);
+    fill_table(begin, end, vertices, save_order);
   }
 
   std::optional<std::vector<std::pair<value_type, Color>>>
   is_bipartite() const {
+    if (table_.empty()) { return {}; }
+
     painting_map visited;
     std::stack<value_type> vertices;
     std::for_each(table_.begin() + offset_, table_.begin() + offset_ + nvertices_,
@@ -65,7 +77,6 @@ class Graph {
     while (!vertices.empty()) {
       auto top = vertices.top();
       vertices.pop();
-
       for (size_type curr_id = table_[visited[top].second + offset_ * 2]; curr_id != visited[top].second;
                 curr_id = table_[curr_id + offset_ * 2]) {
         if (curr_id % 2 == ost) {
@@ -88,7 +99,8 @@ class Graph {
   }
 
  private:
-  void fill_table(std::initializer_list<vertices_pair> ls,
+  template <vertex_iterator<value_type> Iter>
+  void fill_table(Iter begin, Iter end,
                   vertices_map &vert_data,
                   const std::vector<value_type> &order) {
     table_.assign(offset_ * NLine, value_type{0});
@@ -97,10 +109,11 @@ class Graph {
                   [id = 0]() mutable { return id++; }); // filling first line
 
     std::copy(order.begin(), order.end(), table_.begin() + offset_); // saving vertices
-    for (size_type id = nvertices_ + offset_; auto &&[v1, v2] : ls) { // filling second line
-      table_[id++] = v1;
-      table_[id++] = v2;
-    }
+    std::for_each(begin, end, [id = nvertices_ + offset_, &table = table_]
+                              (auto &&pair) mutable {
+                                table[id++] = pair.first;
+                                table[id++] = pair.second;
+                              });
 
     auto map_copy = vert_data; // filling third and fourth lines
     for (size_type curr_id = nvertices_; curr_id < offset_; ++curr_id) {
@@ -130,7 +143,6 @@ class Graph {
       return false;
     }
     return true;
-
   }
 
  private:
