@@ -30,12 +30,13 @@ class Graph {
   using size_type     = std::size_t;
   using value_type    = T;
   using vertices_pair = std::pair<value_type, value_type>;
-  using vertices_map  = std::unordered_map<value_type, size_type>;
-  using painting_map  = std::map<value_type, std::pair<Color, size_type>>;
   using vertices_load = std::unordered_map<value_type, VertexLoad>;
   using edges_load    = std::unordered_map<value_type, std::pair<value_type,
                                                                  EdgeLoad>>;
  private:
+  using vertices_map  = std::unordered_map<value_type, size_type>;
+  using painting_map  = std::map<value_type, std::pair<Color, size_type>>;
+
   static constexpr size_type NLine = 4; // table lines
  public:
   constexpr Graph() = default;
