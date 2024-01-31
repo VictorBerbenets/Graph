@@ -29,9 +29,9 @@ class Graph {
 
   using size_type     = std::size_t;
   using value_type    = T;
-  using vertices_pair = std::pair<value_type, value_type>;
+  using edge_type = std::pair<value_type, value_type>;
   using vertices_load = std::unordered_map<value_type, VertexLoad>;
-  using edges_load    = std::unordered_map<value_type, std::pair<value_type,
+  using edges_load    = std::unordered_map<value_type, std::pair<const value_type,
                                                                  EdgeLoad>>;
  private:
   using vertices_map  = std::unordered_map<value_type, size_type>;
@@ -41,8 +41,10 @@ class Graph {
  public:
   constexpr Graph() = default;
 
-  Graph(std::initializer_list<vertices_pair> ls)
+  Graph(std::initializer_list<edge_type> ls)
       : Graph(ls.begin(), ls.end()) {}
+
+  //Graph()
 
   template <vertex_iterator<value_type> Iter>
   Graph(Iter begin, Iter end)
@@ -51,7 +53,7 @@ class Graph {
     std::vector<value_type> save_order;
 
     auto insert_if = [vert_id = 0ul, &vertices, &save_order]
-                     (const  vertices_pair &pair) mutable {
+                     (const  edge_type &pair) mutable {
       std::vector collector {pair.first, pair.second};
       for (auto &&vertex : collector) {
         if (vertices.find(vertex) == vertices.end()) {
@@ -105,28 +107,21 @@ class Graph {
     return {painted_vertices};
   }
 
-  edges_load::const_iterator edge_load(const vertices_pair &v_pair) const {
-    return edge_load_impl(v_pair);
+  edges_load::const_iterator edge_load(const edge_type &v_pair) const {
+    return find_edge_load(v_pair);
   }
 
-  edges_load::iterator edge_load(const vertices_pair &v_pair) {
-    auto edge_it = edge_load_impl(v_pair);
+  edges_load::iterator edge_load(const edge_type &v_pair) {
+    auto edge_it = find_edge_load(v_pair);
     return e_load_.erase(edge_it, edge_it); // Howard Hinnant trick
   }
+
 #if 0
-  void add_edge(const vertices_pair &v_pair) {
-    std::vector vertices {v_pair.first, v_pair.second};
-    auto begin = table_.begin() + offset_;
-    auto end   = begin + nvertices_;
+  edges_load::iterator insert_edge(edge_type &&edge) {
     
-    for (size_type addition {0}; auto &&val : vertices) {
-      auto it = std::find(begin, end, val);
-      if (it == vertices.end()) {
-        ++addition;
-      }
-    }
   }
 #endif
+
  private:
   template <vertex_iterator<value_type> Iter>
   void fill_table(Iter begin, Iter end,
@@ -178,8 +173,8 @@ class Graph {
     return edge_number % 2 == nvertices_ % 2 ? 1 : -1;
   }
 
-  edges_load::const_iterator edge_load_impl(const vertices_pair &v_pair) const {
-    auto &&[v1, v2] = v_pair;
+  edges_load::const_iterator find_edge_load(const edge_type &edge) const {
+    auto &&[v1, v2] = edge;
     if (auto edge_it = e_load_.find(v1); edge_it != e_load_.end()) {
       auto &edge_end = edge_it->second.first;
       if (edge_end == v2) {
