@@ -33,7 +33,7 @@ class Graph {
   using vertices_map  = std::unordered_map<value_type, size_type>;
   using painting_map  = std::map<value_type, std::pair<Color, size_type>>;
   using vertices_load = std::unordered_map<value_type, VertexLoad>;
-  using edges_load    = std::unordered_map<value_type, std::pair<size_type,
+  using edges_load    = std::unordered_map<value_type, std::pair<value_type,
                                                                  EdgeLoad>>;
  private:
   static constexpr size_type NLine = 4; // table lines
@@ -104,17 +104,28 @@ class Graph {
     return {painted_vertices};
   }
 
-  std::optional<const EdgeLoad&> edge_load(const vertices_pair &v_pair) const {
-    return e_load_.find(v_pair);
+  edges_load::const_iterator edge_load(const vertices_pair &v_pair) const {
+    return edge_load_impl(v_pair);
   }
 
-  std::optional<EdgeLoad&> edge_load(const vertices_pair &v_pair) {
-    if (auto vert_it = e_load_.find(v_pair.first); vert_it != e_load_.end()) {
-      // TODO // 
+  edges_load::iterator edge_load(const vertices_pair &v_pair) {
+    auto edge_it = edge_load_impl(v_pair);
+    return e_load_.erase(edge_it, edge_it); // Howard Hinnant trick
+  }
+#if 0
+  void add_edge(const vertices_pair &v_pair) {
+    std::vector vertices {v_pair.first, v_pair.second};
+    auto begin = table_.begin() + offset_;
+    auto end   = begin + nvertices_;
+    
+    for (size_type addition {0}; auto &&val : vertices) {
+      auto it = std::find(begin, end, val);
+      if (it == vertices.end()) {
+        ++addition;
+      }
     }
-    return {};
   }
-
+#endif
  private:
   template <vertex_iterator<value_type> Iter>
   void fill_table(Iter begin, Iter end,
@@ -161,11 +172,22 @@ class Graph {
     }
     return true;
   }
-
-  int get_edge_dir(size_type curr_id) const noexcept {
-    return curr_id % 2 == nvertices_ % 2 ? 1 : -1;
+  // edge directory
+  int get_edge_dir(size_type edge_number) const noexcept {
+    return edge_number % 2 == nvertices_ % 2 ? 1 : -1;
   }
-  
+
+  edges_load::const_iterator edge_load_impl(const vertices_pair &v_pair) const {
+    auto &&[v1, v2] = v_pair;
+    if (auto edge_it = e_load_.find(v1); edge_it != e_load_.end()) {
+      auto &edge_end = edge_it->second.first;
+      if (edge_end == v2) {
+        return edge_it;
+      }
+    }
+    return e_load_.end() ;
+  }
+ 
  private:
   edges_load e_load_;
   vertices_load v_load_;
