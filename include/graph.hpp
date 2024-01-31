@@ -15,10 +15,8 @@
 
 namespace yLAB {
 
-template <typename IterT, typename VertexT>
-concept vertex_iterator = std::forward_iterator<IterT> &&
-                          std::same_as<typename std::iterator_traits<IterT>::value_type,
-                                       std::pair<VertexT, VertexT>>;
+template <typename CompType, typename VertexT>
+concept validEdgeType = std::same_as<CompType, std::pair<VertexT, VertexT>>;
 
 
 template <std::integral T, typename VertexLoad = int,
@@ -29,7 +27,7 @@ class Graph {
 
   using size_type     = std::size_t;
   using value_type    = T;
-  using edge_type = std::pair<value_type, value_type>;
+  using edge_type     = std::pair<value_type, value_type>;
   using vertices_load = std::unordered_map<value_type, VertexLoad>;
   using edges_load    = std::unordered_map<value_type, std::pair<const value_type,
                                                                  EdgeLoad>>;
@@ -46,7 +44,9 @@ class Graph {
 
   //Graph()
 
-  template <vertex_iterator<value_type> Iter>
+  template <typename Iter>
+  requires std::forward_iterator<Iter> &&
+           validEdgeType <typename std::iterator_traits<Iter>::value_type, value_type>
   Graph(Iter begin, Iter end)
       : nedges_ {static_cast<size_type>(std::distance(begin, end))} {
     vertices_map vertices;
@@ -116,14 +116,29 @@ class Graph {
     return e_load_.erase(edge_it, edge_it); // Howard Hinnant trick
   }
 
-#if 0
+  // TODO //
   edges_load::iterator insert_edge(edge_type &&edge) {
     
   }
-#endif
+
+  edges_load::iterator insert_edge(const edge_type &edge) {
+    
+  }
+  // --- //
+  
+  template <typename Iter>
+  requires std::input_iterator<Iter> &&
+           validEdgeType <typename std::iterator_traits<Iter>::value_type, value_type>
+  void insert_edge(Iter begin, Iter end) {
+    std::for_each(begin, end, insert_edge); 
+  }
+
+  void insert_edge(std::initializer_list<edge_type> ls) {
+    insert_edge(ls.begin(), ls.end()); 
+  }
 
  private:
-  template <vertex_iterator<value_type> Iter>
+  template <std::forward_iterator Iter>
   void fill_table(Iter begin, Iter end,
                   vertices_map &vert_data,
                   const std::vector<value_type> &order) {
