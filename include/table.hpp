@@ -86,7 +86,7 @@ class Table final {
   void fill_table(Iter begin, Iter end,
                   vertices_map &vert_data,
                   const std::vector<value_type> &order) {
-    data_.assign(line_len_ * NLine, value_type{0});
+    data_.reserve(line_len_ * NLine);
     // filling first line
     std::generate(data_.begin(), data_.begin() + line_len_,
                   [id = 0]() mutable { return id++; }); 
