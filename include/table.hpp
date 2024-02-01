@@ -5,6 +5,7 @@
 #include <utility>
 #include <algorithm>
 #include <unordered_map>
+#include <unordered_set>
 #include <memory>
 #include <iterator>
 
@@ -45,16 +46,19 @@ class Table final {
   requires std::forward_iterator<Iter> &&
            validEdgeType <typename std::iterator_traits<Iter>::value_type, value_type>
   constexpr Table(Iter begin, Iter end)
-      : nedges_ {static_cast<size_type>(std::distance(begin, end))} {
+      : nedges_    {static_cast<size_type>(std::distance(begin, end))},
+        nvertices_ {calc_vertices_number(begin, end)},
+        line_len_  {nvertices_ + nedges_ * EdgeAddition},
+        data_ (nedges_ * NLine * 4) {
     vertices_map vertices;
-    std::vector<value_type> save_order;
 
-    auto insert_if = [vert_id = 0ul, &vertices, &save_order]
+    auto &table = *this;
+    auto insert_if = [vert_id = 0ul, &vertices, &table]
                      (const  edge_type &pair) mutable {
       std::vector collector {pair.first, pair.second};
       for (auto &&vertex : collector) {
         if (vertices.find(vertex) == vertices.end()) {
-          save_order.push_back(vertex);
+          table[1][vert_id] = vertex;
           vertices.insert({vertex, vert_id++});
         }
       }
@@ -62,9 +66,31 @@ class Table final {
 
     std::for_each(begin, end, insert_if);
 
-    nvertices_ = vertices.size();
-    line_len_  = nvertices_ + nedges_ * EdgeAddition;
-    fill_table(begin, end, vertices, save_order);
+    // filling first line
+    std::generate(data_.begin(), data_.begin() + line_len_,
+                  [id = 0]() mutable { return id++; }); 
+    // filling second line
+    std::for_each(begin, end, [id = nvertices_, &table]
+                              (auto &&pair) mutable {
+                                table[1][id++] = pair.first;
+                                table[1][id++] = pair.second;
+                              });
+    // filling third line
+    auto map_copy = vertices; 
+    for (size_type curr_id = nvertices_; curr_id < line_len_; ++curr_id) {
+      auto vertex = table[1][curr_id];
+      table[2][vertices[vertex]] = curr_id;
+      table[2][curr_id ] = map_copy[vertex];
+      table[3][curr_id ] = vertices[vertex];
+      vertices[vertex] = curr_id;
+    }
+    // filling fourth line
+    for (size_type table_id = 0; table_id < nvertices_; ++table_id) {
+      table[3][table_id] = vertices[table[1][table_id]];
+    }
+
+    auto true_size = line_len_ * NLine;
+    data_.resize(true_size);
   }
   
   ProxyBracket operator[] (size_type nline) {
@@ -80,45 +106,23 @@ class Table final {
   iterator end()   noexcept { return begin() + nvertices_; }
   const_iterator cbegin() const noexcept { return data_.begin() + line_len_; }
   const_iterator cend()   const noexcept { return cbegin() + nvertices_; }
-
  private:
   template <std::forward_iterator Iter>
-  void fill_table(Iter begin, Iter end,
-                  vertices_map &vert_data,
-                  const std::vector<value_type> &order) {
-    data_.reserve(line_len_ * NLine);
-    // filling first line
-    std::generate(data_.begin(), data_.begin() + line_len_,
-                  [id = 0]() mutable { return id++; }); 
-    // filling second line
-    auto &table = *this;
-    std::copy(order.begin(), order.end(), data_.begin() + line_len_);
-    std::for_each(begin, end, [id = nvertices_, &table]
-                              (auto &&pair) mutable {
-                                table[1][id++] = pair.first;
-                                table[1][id++] = pair.second;
-                              });
-    // filling third line
-    auto map_copy = vert_data; 
-    for (size_type curr_id = nvertices_; curr_id < line_len_; ++curr_id) {
-      auto vertex = table[1][curr_id];
-      table[2][vert_data[vertex]] = curr_id;
-      table[2][curr_id ] = map_copy[vertex];
-      table[3][curr_id ] = vert_data[vertex];
-      vert_data[vertex] = curr_id;
-    }
-    // filling fourth line
-    for (size_type table_id = 0; table_id < nvertices_; ++table_id) {
-      table[3][table_id] = vert_data[order[table_id]];
-    }
+  size_type calc_vertices_number(Iter begin, Iter end) {
+    std::unordered_set<value_type> vertices;
+    std::for_each(begin, end, [&vertices](auto &&pair) {
+      vertices.insert({pair.first, pair.second});
+    });
+
+    return vertices.size();
   }
- 
+
   template <std::integral, typename, typename> friend class ::yLAB::Graph;
  private:
-  std::vector<value_type> data_;
-  size_type nvertices_ = 0;
   size_type nedges_    = 0;
+  size_type nvertices_ = 0;
   size_type line_len_  = 0;
+  std::vector<value_type> data_;
 
   class ProxyBracket final {
   public:
