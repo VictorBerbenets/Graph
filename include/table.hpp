@@ -4,6 +4,7 @@
 #include <concepts>
 #include <utility>
 #include <algorithm>
+#include <numeric>
 #include <unordered_map>
 #include <unordered_set>
 #include <memory>
@@ -67,8 +68,7 @@ class Table final {
     std::for_each(begin, end, insert_if);
 
     // filling first line
-    std::generate(data_.begin(), data_.begin() + line_len_,
-                  [id = 0]() mutable { return id++; }); 
+    std::iota(data_.begin(), data_.begin() + line_len_, value_type {0});
     // filling second line
     std::for_each(begin, end, [id = nvertices_, &table]
                               (auto &&pair) mutable {
