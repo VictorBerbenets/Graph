@@ -49,7 +49,7 @@ class Table final {
       : nedges_    {static_cast<size_type>(std::distance(begin, end))},
         nvertices_ {calc_vertices_number(begin, end)},
         line_len_  {nvertices_ + nedges_ * EdgeAddition},
-        data_ (nedges_ * NLine * 4) {
+        data_ (line_len_ * NLine) {
     vertices_map vertices;
 
     auto &table = *this;
@@ -88,9 +88,6 @@ class Table final {
     for (size_type table_id = 0; table_id < nvertices_; ++table_id) {
       table[3][table_id] = vertices[table[1][table_id]];
     }
-
-    auto true_size = line_len_ * NLine;
-    data_.resize(true_size);
   }
   
   ProxyBracket operator[] (size_type nline) {
