@@ -30,14 +30,31 @@ class Graph final {
   using edges_load    = std::unordered_map<value_type, std::pair<const value_type,
                                                                  EdgeLoad>>;
  private:
-  using painting_map  = std::map<value_type, std::pair<Color, size_type>>;
+  using painting_map   = std::map<value_type, std::pair<Color, size_type>>;
+  using edge_load_type = std::pair<edge_type, EdgeLoad>;
  public:
   constexpr Graph() = default;
 
   Graph(std::initializer_list<edge_type> ls)
       : Graph(ls.begin(), ls.end()) {}
 
-  template <std::input_iterator Iter>
+  template <std::forward_iterator Iter>
+  requires std::same_as<typename std::iterator_traits<Iter>::value_type,
+                        edge_load_type>
+  Graph(Iter begin, Iter end) {
+    std::vector<edge_type> edges;
+    std::for_each(begin, end, [&e_load = e_load_, &edges](auto &&pair) {
+      auto &&[edge, load] = pair;
+      edges.push_back(edge);
+      // saving edge load
+      e_load.emplace(edge.first, std::make_pair(edge.second, load));
+    });
+
+    table_.set_class_fields(edges.begin(), edges.end());
+    table_.fill(edges.begin(), edges.end());
+  }
+
+  template <std::forward_iterator Iter>
   Graph(Iter begin, Iter end)
       : table_ (begin, end) {}
 
@@ -49,7 +66,7 @@ class Graph final {
                   (auto &&val) mutable {
       visited[val] = {Color::Grey, id++};
     });
-                              
+ 
     std::stack<value_type> vertices;
     while(!not_visited.empty()) {
       auto n_visited_v = not_visited.begin();
