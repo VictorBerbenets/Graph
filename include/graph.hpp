@@ -104,13 +104,19 @@ class Graph final {
   }
 
   edges_load::iterator set_eload(const edge_type& edge, const EdgeLoad &load) {
-    if (auto it = find_edge(edge); it != e_load_.end()) {
-    //  e_load_[edge.first]
+    if (auto it = edge_load(edge); it != e_load_.end()) {
+      it->second.second = load;
+      return it;
     }
     return e_load_.end();
   }
 
   edges_load::iterator set_eload(const edge_type& edge, EdgeLoad &&load) {
+    if (auto it = edge_load(edge); it != e_load_.end()) {
+      it->second.second = std::move(load); 
+      return it;
+    }
+    return e_load_.end();
 
   }
 
@@ -181,7 +187,7 @@ class Graph final {
   int get_edge_dir(size_type edge_number) const noexcept {
     return edge_number % 2 == table_.nvertices_ % 2 ? 1 : -1;
   }
- public:
+
   edges_load::const_iterator find_edge(const edge_type &edge) const {
     auto &[v1, v2] = edge;
     auto [begin, end] = e_load_.equal_range(v1);
