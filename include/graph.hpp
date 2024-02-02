@@ -10,6 +10,7 @@
 #include <initializer_list>
 #include <unordered_map>
 #include <iterator>
+#include <memory>
 #include <set>
 #include <map>
 
@@ -59,6 +60,15 @@ class Graph final {
     table_.set_class_fields(begin_v, end_v,
                             count_vertices(begin_v, end_v) );
     table_.fill(begin_v, end_v);
+#if 0
+    for (int i = 0; i < 4; ++i) {
+      for (int j = 0; j < table_.line_len_; ++j) {
+        std::cout << table_[i][j] << ' ';
+      }
+      std::cout << std::endl;
+    }
+    std::cout << std::endl;
+#endif
   }
 
   template <std::forward_iterator Iter>
@@ -130,22 +140,56 @@ class Graph final {
   }
 
   // TODO //
-  edges_load::iterator insert_edge(edge_type &&edge) {
-    if (auto it = find_edge(edge); it != e_load_.end()) {
+  edges_load::iterator insert_edge(const edge_type &edge) {
+    if (auto it = edge_load(edge); it != e_load_.end()) {
       return it;
     }
 
     std::vector verts {edge.first, edge.second};
-    std::for_each(table_.begin(), table_.end(), [&verts](auto &&vert) {
-      std::erase_if(verts, [&vert](auto &&v) { return v == vert; });
+    std::erase_if(verts, [&table = table_](auto &&v) { 
+      return std::find(table.begin(), table.end(), v) != table.end();
     });
-    // TODO //
-  }
 
-  edges_load::iterator insert_edge(const edge_type &edge) {
-   
+    auto old_table    = std::move(table_);
+    table_.nedges_    = old_table.nedges_ + 1;
+    table_.nvertices_ = old_table.nvertices_ + verts.size();
+    table_.line_len_  = table_.nvertices_ + table_.nedges_ * 2;
+    
+    auto &old_data = old_table.data_;
+    auto &new_data = table_.data_;
+    new_data.resize(table_.line_len_ * 4);
+    //filling first line
+    std::iota(new_data.begin(), new_data.begin() + table_.line_len_,
+              value_type {0});
+    
+    auto &[v1, v2] = edge;
+    if (verts.empty()) {
+      std::copy(std::addressof(old_table[1][0]), std::addressof(old_table[1][old_table.line_len_]),
+                std::addressof(table_[1][0]));
+      std::copy(std::addressof(old_table[2][0]), std::addressof(old_table[2][old_table.line_len_]),
+                std::addressof(table_[2][0]));
+      std::copy(std::addressof(old_table[3][0]), std::addressof(old_table[3][old_table.line_len_]),
+                std::addressof(table_[3][0]));
+
+      auto id1 = table_.line_len_ - 2;
+      auto id2 = table_.line_len_ - 1;
+      table_[1][id1] = v1; 
+      table_[1][id2] = v2;
+      auto it1 = std::find(old_table.begin(), old_table.end(), v1);
+      auto it2 = std::find(old_table.begin(), old_table.end(), v2);
+      auto offset1 = std::distance(old_table.begin(), it1);
+      auto offset2 = std::distance(old_table.begin(), it2);
+      
+      auto old_last1 = table_[3][offset1];
+      auto old_last2 = table_[3][offset2];
+
+      table_[2][id1] = std::exchange(table_[2][old_last1], id1);
+      table_[2][id2] = std::exchange(table_[2][old_last2], id2);
+
+    } else {
+
+    }
   }
-  // --- //
 
   template <typename Iter>
   requires std::input_iterator<Iter> &&
