@@ -45,22 +45,22 @@ class Table final {
 
   template <std::forward_iterator Iter>
   requires validEdgeType <typename std::iterator_traits<Iter>::value_type, value_type>
-  constexpr Table(Iter begin, Iter end)
+  constexpr Table(Iter begin, Iter end, size_type vertices_num)
       : nedges_    {static_cast<size_type>(std::distance(begin, end))},
-        nvertices_ {calc_vertices_number(begin, end)},
+        nvertices_ {vertices_num},
         line_len_  {nvertices_ + nedges_ * EdgeAddition},
         data_ (line_len_ * NLine) {
     fill(begin, end);
   }
-  
+
   ProxyBracket operator[] (size_type nline) {
     return ProxyBracket(std::addressof(data_[nline * line_len_]));
   }
-  
+
   const ProxyBracket operator[] (size_type nline) const {
     return ProxyBracket(std::addressof(const_cast<reference>(data_[nline * line_len_])));
   }
-  
+
   // psevdo iterators which walks on vertices
   iterator begin() noexcept { return data_.begin() + line_len_; }
   iterator end()   noexcept { return begin() + nvertices_; }
@@ -68,19 +68,9 @@ class Table final {
   const_iterator cend()   const noexcept { return cbegin() + nvertices_; }
  private:
   template <std::forward_iterator Iter>
-  size_type calc_vertices_number(Iter begin, Iter end) {
-    std::unordered_set<value_type> vertices;
-    std::for_each(begin, end, [&vertices](auto &&pair) {
-      vertices.insert({pair.first, pair.second});
-    });
-
-    return vertices.size();
-  }
- 
-  template <std::forward_iterator Iter>
-  void set_class_fields(Iter begin, Iter end) {
+  void set_class_fields(Iter begin, Iter end, size_type nvertices) {
     nedges_    = static_cast<size_type>(std::distance(begin, end)),
-    nvertices_ = calc_vertices_number(begin, end),
+    nvertices_ = nvertices,
     line_len_  = nvertices_ + nedges_ * EdgeAddition,
     data_.reserve(line_len_ * NLine);
   }
@@ -111,7 +101,7 @@ class Table final {
                                 table[1][id++] = pair.second;
                               });
     // filling third line
-    auto map_copy = vertices; 
+    auto map_copy = vertices;
     for (size_type curr_id = nvertices_; curr_id < line_len_; ++curr_id) {
       auto vertex = table[1][curr_id];
       table[2][vertices[vertex]] = curr_id;

@@ -23,24 +23,29 @@ class Graph final {
  public:
   enum class Color : char {Grey, Blue, Red}; // for coloring vertices
 
-  using size_type     = std::size_t;
-  using value_type    = T;
-  using edge_type     = detail::Table<value_type>::edge_type;
-  using vertices_load = std::unordered_map<value_type, VertexLoad>;
-  using edges_load    = std::unordered_multimap<value_type, std::pair<const value_type,
-                                                                 EdgeLoad>>;
+  using value_type         = T;
+  using edge_type          = detail::Table<value_type>::edge_type;
+  using size_type          = detail::Table<value_type>::size_type;
+  using vertex_load_type   = VertexLoad;
+  using edge_load_type     = EdgeLoad;
+  using vertices_load      = std::unordered_map<value_type, vertex_load_type>;
+  using edges_load         = std::unordered_multimap<value_type, std::pair<const value_type,
+                                                                 edge_load_type>>;
  private:
   using painting_map   = std::map<value_type, std::pair<Color, size_type>>;
-  using edge_load_type = std::pair<edge_type, EdgeLoad>;
+  using edge_load_pair = std::pair<edge_type, EdgeLoad>;
  public:
   constexpr Graph() = default;
-
-  Graph(std::initializer_list<edge_type> ls)
+  
+  template <typename EdgeType>
+  requires std::same_as<EdgeType, edge_type> ||
+           std::same_as<EdgeType, edge_load_pair>
+  Graph(std::initializer_list<EdgeType> ls)
       : Graph(ls.begin(), ls.end()) {}
 
   template <std::forward_iterator Iter>
   requires std::same_as<typename std::iterator_traits<Iter>::value_type,
-                        edge_load_type>
+                        edge_load_pair>
   Graph(Iter begin, Iter end) {
     std::vector<edge_type> edges;
     std::for_each(begin, end, [&e_load = e_load_, &edges](auto &&pair) {
@@ -49,14 +54,18 @@ class Graph final {
       // saving edge load
       e_load.emplace(edge.first, std::make_pair(edge.second, load));
     });
-
-    table_.set_class_fields(edges.begin(), edges.end());
-    table_.fill(edges.begin(), edges.end());
+    
+    auto begin_v = edges.begin(), end_v = edges.end();
+    table_.set_class_fields(begin_v, end_v,
+                            count_vertices(begin_v, end_v) );
+    table_.fill(begin_v, end_v);
   }
 
   template <std::forward_iterator Iter>
+  requires std::same_as<typename std::iterator_traits<Iter>::value_type,
+                        edge_type>
   Graph(Iter begin, Iter end)
-      : table_ (begin, end) {}
+      : table_ (begin, end, count_vertices(begin, end)) {}
 
   std::optional<std::vector<std::pair<value_type, Color>>>
   is_bipartite() const {
@@ -66,7 +75,7 @@ class Graph final {
                   (auto &&val) mutable {
       visited[val] = {Color::Grey, id++};
     });
- 
+
     std::stack<value_type> vertices;
     while(!not_visited.empty()) {
       auto n_visited_v = not_visited.begin();
@@ -96,7 +105,7 @@ class Graph final {
 
   edges_load::iterator set_eload(const edge_type& edge, const EdgeLoad &load) {
     if (auto it = find_edge(edge); it != e_load_.end()) {
-    //  e_load_[edge.first] 
+    //  e_load_[edge.first]
     }
     return e_load_.end();
   }
@@ -131,20 +140,29 @@ class Graph final {
    
   }
   // --- //
-  
+
   template <typename Iter>
   requires std::input_iterator<Iter> &&
            detail::validEdgeType <typename std::iterator_traits<Iter>::value_type,
                                   value_type>
   void insert_edge(Iter begin, Iter end) {
-    std::for_each(begin, end, insert_edge); 
+    std::for_each(begin, end, insert_edge);
   }
 
   void insert_edge(std::initializer_list<edge_type> ls) {
-    insert_edge(ls.begin(), ls.end()); 
+    insert_edge(ls.begin(), ls.end());
   }
 
  private:
+  template <std::forward_iterator Iter>
+  size_type count_vertices(Iter begin, Iter end) {
+    std::for_each(begin, end, [&v_load = v_load_](auto &&pair) {
+      v_load.emplace(pair.first, vertex_load_type());
+      v_load.emplace(pair.second, vertex_load_type());
+    });
+    return v_load_.size();
+  }
+
   bool is_right_painted(value_type top_vert, value_type neighbour_vert,
                   painting_map &p_map, std::stack<value_type> &vertices) const {
     auto draw_neighbour_vertex = [](Color own_color) {
@@ -163,7 +181,7 @@ class Graph final {
   int get_edge_dir(size_type edge_number) const noexcept {
     return edge_number % 2 == table_.nvertices_ % 2 ? 1 : -1;
   }
-
+ public:
   edges_load::const_iterator find_edge(const edge_type &edge) const {
     auto &[v1, v2] = edge;
     auto [begin, end] = e_load_.equal_range(v1);
@@ -173,9 +191,9 @@ class Graph final {
   }
 
  private:
-  detail::Table<value_type> table_;
   edges_load e_load_;
   vertices_load v_load_;
+  detail::Table<value_type> table_;
 };
 
 } // <--- namespace yLAB
