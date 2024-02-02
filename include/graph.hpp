@@ -27,7 +27,7 @@ class Graph final {
   using value_type    = T;
   using edge_type     = detail::Table<value_type>::edge_type;
   using vertices_load = std::unordered_map<value_type, VertexLoad>;
-  using edges_load    = std::unordered_map<value_type, std::pair<const value_type,
+  using edges_load    = std::unordered_multimap<value_type, std::pair<const value_type,
                                                                  EdgeLoad>>;
  private:
   using painting_map   = std::map<value_type, std::pair<Color, size_type>>;
@@ -94,6 +94,17 @@ class Graph final {
     return {painted_vertices};
   }
 
+  edges_load::iterator set_eload(const edge_type& edge, const EdgeLoad &load) {
+    if (auto it = find_edge(edge); it != e_load_.end()) {
+    //  e_load_[edge.first] 
+    }
+    return e_load_.end();
+  }
+
+  edges_load::iterator set_eload(const edge_type& edge, EdgeLoad &&load) {
+
+  }
+
   edges_load::const_iterator edge_load(const edge_type &edge) const {
     return find_edge(edge);
   }
@@ -154,14 +165,11 @@ class Graph final {
   }
 
   edges_load::const_iterator find_edge(const edge_type &edge) const {
-    auto &&[v1, v2] = edge;
-    if (auto edge_it = e_load_.find(v1); edge_it != e_load_.end()) {
-      auto &edge_end = edge_it->second.first;
-      if (edge_end == v2) {
-        return edge_it;
-      }
-    }
-    return e_load_.end();
+    auto &[v1, v2] = edge;
+    auto [begin, end] = e_load_.equal_range(v1);
+    return std::find_if(begin, end, [&v2](auto &&pair) {
+             return pair.second.first == v2;
+           });
   }
 
  private:
