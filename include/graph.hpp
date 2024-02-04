@@ -155,14 +155,68 @@ class Graph final {
     return e_load_.erase(edge_it, edge_it); // Howard Hinnant trick
   }
 
-  // TODO //
-  edges_load::iterator insert_edge(const edge_type &edge) {
-    auto [v1, v2] = edge;
+  std::pair<typename edges_load::iterator, bool>
+  insert_edge(const edge_type &edge) {
     if (auto it = edge_load(edge); it != e_load_.cend()) {
-      return it;
+      return {it, false};
     }
-    auto ret_value = e_load_.emplace(v1, std::make_pair(v2, EdgeLoad()));
+    insert_edge_impl(edge);
+ 
+    return {e_load_.emplace(edge.first, std::make_pair(edge.second,
+                           EdgeLoad())), true};
+  }
 
+  std::pair<typename edges_load::iterator, bool>
+  insert_edge(const edge_type &edge, const edge_load_type &load) {
+    if (auto it = edge_load(edge); it != e_load_.cend()) {
+      return {it, false};
+    }
+
+    insert_edge_impl(edge); 
+    return {e_load_.emplace(edge.first, std::make_pair(edge.second, load)),
+            true};
+  }
+
+  std::pair<typename edges_load::iterator, bool>
+  insert_edge(const edge_type &edge, edge_load_type &&load) {
+    if (auto it = edge_load(edge); it != e_load_.cend()) {
+      return {it, false};
+    }
+
+    insert_edge_impl(edge); 
+    return {e_load_.emplace(edge.first,
+                            std::make_pair(edge.second, std::move(load))), true};
+  }
+
+  template <typename... Args>
+  std::pair<typename edges_load::iterator, bool>
+  insert_edge(const edge_type &edge, Args&&... args) {
+    if (auto it = edge_load(edge); it != e_load_.cend()) {
+      return {it, false};
+    }
+
+    insert_edge_impl(edge); 
+    return {e_load_.emplace(edge.first, std::make_pair(edge.second,
+                                        std::forward<Args>(args)...)), true};
+  }
+
+  template <typename Iter>
+  requires std::input_iterator<Iter> &&
+           detail::validEdgeType <typename std::iterator_traits<Iter>::value_type,
+                                  value_type>
+  void insert_edge(Iter begin, Iter end) {
+    for (; begin != end; ++begin) {
+      insert_edge(*begin);
+    }
+  }
+
+  void insert_edge(std::initializer_list<edge_type> ls) {
+    insert_edge(ls.begin(), ls.end());
+  }
+
+ private:
+  void insert_edge_impl(const edge_type &edge) {
+    auto [v1, v2] = edge;
     std::vector verts {std::pair{v1, 1}, std::pair{v2, 2}};
     std::erase_if(verts, [&v_table = v_load_](auto &&p) { 
       return v_table.find(p.first) != v_table.end();
@@ -245,26 +299,8 @@ class Graph final {
       }
 
     }
-    return ret_value;
   }
 
-  template <typename Iter>
-  requires std::input_iterator<Iter> &&
-           detail::validEdgeType <typename std::iterator_traits<Iter>::value_type,
-                                  value_type>
-  void insert_edge(Iter begin, Iter end) {
-    for (; begin != end; ++begin) {
-      insert_edge(*begin);
-    }
-  }
-
-  void insert_edge(std::initializer_list<edge_type> ls) {
-    insert_edge(ls.begin(), ls.end());
-  }
-
-
-
- private:
   template <std::forward_iterator Iter>
   size_type count_vertices(Iter begin, Iter end) {
     std::for_each(begin, end, [&v_load = v_load_](auto &&pair) {
