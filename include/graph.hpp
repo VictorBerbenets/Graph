@@ -41,7 +41,7 @@ class Graph final {
   using edge_load_pair = std::pair<edge_type, EdgeLoad>;
  public:
   constexpr Graph() = default;
-  
+
   template <typename EdgeType>
   requires std::same_as<EdgeType, edge_type> ||
            std::same_as<EdgeType, edge_load_pair>
@@ -59,7 +59,7 @@ class Graph final {
       // saving edge load
       e_load.emplace(edge.first, std::make_pair(edge.second, load));
     });
-    
+
     auto begin_v = edges.begin(), end_v = edges.end();
     table_.set_class_fields(begin_v, end_v,
                             count_vertices(begin_v, end_v) );
@@ -119,7 +119,7 @@ class Graph final {
   edges_load::iterator set_edge_load(const edge_type& edge,
                                      edge_load_type &&load) {
     if (auto it = edge_load(edge); it != e_load_.end()) {
-      it->second.second = std::move(load); 
+      it->second.second = std::move(load);
       return it;
     }
     return e_load_.end();
@@ -165,7 +165,7 @@ class Graph final {
       return {it, false};
     }
 
-    insert_edge_impl(edge); 
+    insert_edge_impl(edge);
     return {e_load_.emplace(edge.first, std::make_pair(edge.second,
                            EdgeLoad())), true};
   }
@@ -176,7 +176,7 @@ class Graph final {
       return {it, false};
     }
 
-    insert_edge_impl(edge); 
+    insert_edge_impl(edge);
     return {e_load_.emplace(edge.first, std::make_pair(edge.second, load)),
             true};
   }
@@ -187,7 +187,7 @@ class Graph final {
       return {it, false};
     }
 
-    insert_edge_impl(edge); 
+    insert_edge_impl(edge);
     return {e_load_.emplace(edge.first,
                             std::make_pair(edge.second, std::move(load))), true};
   }
@@ -199,7 +199,7 @@ class Graph final {
       return {it, false};
     }
 
-    insert_edge_impl(edge); 
+    insert_edge_impl(edge);
     return {e_load_.emplace(edge.first, std::make_pair(edge.second,
                                         std::forward<Args>(args)...)), true};
   }
@@ -233,7 +233,7 @@ class Graph final {
   void insert_edge_impl(const edge_type &edge) {
     auto [v1, v2] = edge;
     std::vector verts {std::pair{v1, 1}, std::pair{v2, 2}};
-    std::erase_if(verts, [&v_table = v_load_](auto &&p) { 
+    std::erase_if(verts, [&v_table = v_load_](auto &&p) {
       return v_table.find(p.first) != v_table.end();
     });
 
@@ -241,13 +241,13 @@ class Graph final {
     table_.nedges_    = old_table.nedges_ + 1;
     table_.nvertices_ = old_table.nvertices_ + verts.size();
     table_.line_len_  = table_.nvertices_ + table_.nedges_ * 2;
-    
+
     auto &new_data = table_.data_;
     new_data.resize(table_.line_len_ * 4);
     //filling first line
     std::iota(new_data.begin(), new_data.begin() + table_.line_len_,
               value_type {0});
-    
+
     if (verts.empty()) { // if vertices have already met in the table
       // copying the second line
       std::copy(std::addressof(old_table[1][0]),
@@ -255,7 +255,7 @@ class Graph final {
                 std::addressof(table_[1][0]));
       for (int id = 2; id < 4; ++id) {
         // copying the third and the fourth lines
-        std::copy(std::addressof(old_table[id][0]), 
+        std::copy(std::addressof(old_table[id][0]),
                   std::addressof(old_table[id][old_table.line_len_]),
                   std::addressof(table_[id][0]));
       }
@@ -278,21 +278,21 @@ class Graph final {
         std::transform(first, last, d_first,
                        [inc_value, limit] (auto &&val) -> size_type {
           if (static_cast<size_type>(val) < limit) { return val; }
-          return val + inc_value; 
+          return val + inc_value;
         });
       };
- 
+
       auto verts_sz = verts.size();
       auto limit    = old_table.nvertices_;
       // filling third and fouth lines
       for (size_type line_id = 2; line_id < 4; ++line_id) {
-        increment_copy(std::addressof(old_table[line_id][0]), 
+        increment_copy(std::addressof(old_table[line_id][0]),
                        std::addressof(old_table[line_id][old_table.nvertices_]),
                        std::addressof(table_[line_id][0]), verts_sz, limit);
 
         increment_copy(std::addressof(old_table[line_id][old_table.nvertices_]),
                        std::addressof(old_table[line_id][old_table.line_len_]),
-                       std::addressof(table_[line_id][table_.nvertices_]), 
+                       std::addressof(table_[line_id][table_.nvertices_]),
                        verts_sz, limit);
       }
       // setting next and prev edges for each new vertex

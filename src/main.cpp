@@ -16,44 +16,41 @@ void print_bipartite_graph(const yLAB::Graph<T> &gr) {
   if (auto opt_map = gr.is_bipartite(); opt_map) {
     for (auto &&[vert, col] : opt_map.value()) {
       if (col == Color::Blue) {
-        std::cout << vert << " b ";  
+        std::cout << vert << " b ";
       }
     }
     for (auto &&[vert, col] : opt_map.value()) {
       if (col == Color::Red) {
-        std::cout << vert << " r ";  
+        std::cout << vert << " r ";
       }
     }
     std::cout << std::endl;
   } else {
     std::cout << "Graph isn't bipartite" << std::endl;
   }
-   
 }
 
-std::vector<std::pair<int, int>> get_data(std::istream& is) {
-  std::vector<std::pair<int, int>> data;
-  
+auto get_data(std::istream& is) {
+  std::vector<std::pair<std::pair<int, int>, int>> data;
+
   std::string line;
   while(std::getline(is, line)) {
     std::remove(line.begin(), line.end(), '-');
     std::remove(line.begin(), line.end(), ',');
 
     std::istringstream istream {line};
-    int v1 {0}, v2 {0};
+    int v1 {0}, v2 {0}, load{0};
     istream >> v1 >> v2;
-    data.push_back(std::make_pair(v1, v2));
+    data.emplace_back(std::make_pair(v1, v2), load);
   }
   return data;
 }
 
-}
+} // <--- namespace
 
 int main() {
   auto data = get_data(std::cin);
-
   yLAB::Graph<int> g(data.begin(), data.end());
-  //const yLAB::Graph<int> g{{1, 2}, {2, 3}, {3, -1}};
   print_bipartite_graph(g);
 }
 
