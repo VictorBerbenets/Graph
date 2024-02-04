@@ -103,7 +103,8 @@ class Graph final {
     return {painted_vertices};
   }
 
-  edges_load::iterator set_eload(const edge_type& edge, const EdgeLoad &load) {
+  edges_load::iterator set_edge_load(const edge_type& edge,
+                                     const edge_load_type &load) {
     if (auto it = edge_load(edge); it != e_load_.end()) {
       it->second.second = load;
       return it;
@@ -111,13 +112,38 @@ class Graph final {
     return e_load_.end();
   }
 
-  edges_load::iterator set_eload(const edge_type& edge, EdgeLoad &&load) {
+  edges_load::iterator set_edge_load(const edge_type& edge,
+                                     edge_load_type &&load) {
     if (auto it = edge_load(edge); it != e_load_.end()) {
       it->second.second = std::move(load); 
       return it;
     }
     return e_load_.end();
 
+  }
+
+  edges_load::iterator set_vertex_load(value_type vertex,
+                                       const vertex_load_type &load) {
+    if (auto it = vertex_load(vertex); it != v_load_.end()) {
+      it->second = load;
+    }
+    return v_load_.end();
+  }
+
+  edges_load::iterator set_vertex_load(value_type vertex,
+                                       vertex_load_type &&load) {
+    if (auto it = vertex_load(vertex); it != v_load_.end()) {
+      it->second = std::move(load);
+    }
+    return v_load_.end();
+  }
+
+  vertices_load::iterator vertex_load(value_type vertex) {
+    return v_load_.find(vertex);
+  }
+
+  vertices_load::const_iterator vertex_load(value_type vertex) const {
+    return v_load_.find(vertex);
   }
 
   edges_load::const_iterator edge_load(const edge_type &edge) const {
@@ -181,8 +207,7 @@ class Graph final {
       auto increment_copy = [] (auto first, auto last, auto d_first,
                                size_type inc_value, size_type limit) mutable {
         std::transform(first, last, d_first,
-                       [inc_value, limit]
-                       (auto &&val) -> size_type {
+                       [inc_value, limit] (auto &&val) -> size_type {
           if (static_cast<size_type>(val) < limit) { return val; }
           return val + inc_value; 
         });
@@ -236,6 +261,8 @@ class Graph final {
   void insert_edge(std::initializer_list<edge_type> ls) {
     insert_edge(ls.begin(), ls.end());
   }
+
+
 
  private:
   template <std::forward_iterator Iter>
