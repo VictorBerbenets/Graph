@@ -32,6 +32,10 @@ class Graph final {
   using vertices_load      = std::unordered_map<value_type, vertex_load_type>;
   using edges_load         = std::unordered_multimap<value_type, std::pair<const value_type,
                                                                  edge_load_type>>;
+  using iterator               = detail::Table<value_type>::const_iterator;
+  using const_iterator         = detail::Table<value_type>::const_iterator;
+  using reverse_iterator       = std::reverse_iterator<iterator>;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
  private:
   using painting_map   = std::map<value_type, std::pair<Color, size_type>>;
   using edge_load_pair = std::pair<edge_type, EdgeLoad>;
@@ -60,16 +64,6 @@ class Graph final {
     table_.set_class_fields(begin_v, end_v,
                             count_vertices(begin_v, end_v) );
     table_.fill(begin_v, end_v);
-#if 0
-    for (int i = 0; i < 4; ++i) {
-      for (int j = 0; j < table_.line_len_; ++j) {
-        std::cout << table_[i][j] << ' ';
-        if (table_[i][j] < 10) std::cout << ' ';
-      }
-      std::cout << std::endl;
-    }
-    std::cout << std::endl;
-#endif
   }
 
   template <std::forward_iterator Iter>
@@ -224,100 +218,17 @@ class Graph final {
     insert_edge(ls.begin(), ls.end());
   }
 
-  size_type erase_edge(const edge_type &edge) {
-    if (auto it = find_edge(edge); it == e_load_.cend()) {
-      return 0;
-    }
+  size_type v_size() const noexcept { return table_.nvertices_; }
+  size_type e_size() const noexcept { return table_.edges_; }
 
-    std::vector verts {edge.first, edge.second};
-    auto [id1, id2] = find_edge_id(verts.front(), verts.back());
-    auto old_table = std::move(table_);
-    std::cout << "ID1 = " << id1 << std::endl;
-    std::cout << "ID2 = " << id2 << std::endl;
-    auto vert_id1 = *(std::find(old_table.begin(), old_table.end(),
-                      edge.first) - old_table.line_len_);
-    auto vert_id2 = *(std::find(old_table.begin(), old_table.end(),
-                      edge.second) - old_table.line_len_);
-    std::cout << "VERT_ID1 = " << vert_id1 << std::endl;
-    std::cout << "VERT_ID2 = " << vert_id2 << std::endl;
-    // we leave only these vertices which contained only in removing edge
-    std::erase_if(verts, [&table = old_table] (auto &&vert) {
-      return std::count(table.begin() + table.nvertices_,
-                        table.begin() + table.line_len_, vert) != 1;
-    });
-    // new table params
-    table_.nvertices_ = old_table.nvertices_ - verts.size();
-    table_.nedges_    = old_table.nedges_ - 1;
-    table_.line_len_  = table_.nvertices_ + table_.nedges_ * 2;
-    
-    auto &new_data = table_.data_;
-    new_data.resize(table_.line_len_ * 4);
-    // filling first line
-    std::iota(new_data.begin(), new_data.begin() + table_.line_len_,
-              value_type {0});
-    // if we haven't vertices to remove, only edge
-    if (verts.empty()) {
-      std::vector id_stor {std::pair{vert_id1, id1}, std::pair{vert_id2, id2}};
-      for (auto &[v_id, id] : id_stor) {
-        auto next_edge = old_table[2][id];
-        auto prev_edge = old_table[3][id];
-        std::cout << "ID   = " << id << std::endl;
-        std::cout << "NEXT = " << next_edge << std::endl;
-        std::cout << "PREV = " << prev_edge << std::endl;
-        old_table[2][prev_edge] = next_edge;
-        old_table[3][next_edge] = old_table[3][id];
-
-        if (next_edge == v_id) {
-          old_table[3][v_id] = prev_edge;
-        }
-        if (prev_edge == v_id) {
-          old_table[3][next_edge] = v_id;
-        }
-
-      }
-
-      auto dicrease_copy = [](auto begin, auto end, auto d_begin,
-                              size_type limit) {
-        std::transform(begin, end, d_begin,
-                       [limit] (auto &&val) -> size_type {
-          if (static_cast<size_type>(val) < limit) { return val; }
-          // after edge removing ofset will be 2 cells
-          return val - 2;
-        });
-      };
-      // filling second line
-      std::copy(std::addressof(old_table[1][0]),
-                    std::addressof(old_table[1][id1]),
-                    std::addressof(table_[1][0]));
-      std::copy(std::addressof(old_table[1][id2 + 1]),
-                    std::addressof(old_table[1][old_table.line_len_]),
-                    std::addressof(table_[1][id1]));
-      // filling third and fourth lines
-      for (size_type id = 2; id < 4; ++id) {
-        dicrease_copy(std::addressof(old_table[id][0]),
-                      std::addressof(old_table[id][id1]),
-                      std::addressof(table_[id][0]), id1);
-        dicrease_copy(std::addressof(old_table[id][id2 + 1]),
-                      std::addressof(old_table[id][old_table.line_len_]),
-                      std::addressof(table_[id][id1]), id1);
-      }
-
-    } else {
-    
-    }
-#if 0
-    for (int i = 0; i < 4; ++i) {
-      for (int j = 0; j < table_.line_len_; ++j) {
-        std::cout << table_[i][j] << ' ';
-        if (table_[i][j] < 10) std::cout << ' ';
-      }
-      std::cout << std::endl;
-    }
-    std::cout << std::endl;
-    return 1;
-#endif
-  }
-
+  iterator begin() noexcept { return table_.begin(); }
+  iterator end() noexcept { return table_.end(); }
+  const_iterator cbegin() const noexcept { return table_.cbegin(); }
+  const_iterator cend() const noexcept { return table_.cend(); }
+  reverse_iterator rbegin() noexcept { return std::make_reverse_iterator(begin()); }
+  reverse_iterator rend() noexcept { return std::make_reverse_iterator(end()); }
+  const_reverse_iterator crbegin() noexcept { return std::make_reverse_iterator(cbegin()); }
+  const_reverse_iterator crend() noexcept { return std::make_reverse_iterator(cend()); }
  private:
   void insert_edge_impl(const edge_type &edge) {
     auto [v1, v2] = edge;
@@ -455,22 +366,6 @@ class Graph final {
       return e_load_.end();
     }
     return found_iter;
-  }
-
-  std::pair<size_type, size_type>
-  find_edge_id(value_type v1, value_type v2) const {
-    auto first_vert = std::find(table_.cbegin(), table_.cend(), v1);
-    auto start_edge  = *(first_vert + table_.line_len_);
-    auto end_edge   = *(first_vert - table_.line_len_);
-    
-    for (auto curr_edge = start_edge; curr_edge != end_edge;
-                                      curr_edge = table_[2][curr_edge]) {
-      auto dir = get_edge_dir(curr_edge);
-      if (table_[1][curr_edge + dir] == v2) {
-        return {curr_edge, curr_edge + dir};
-      } 
-    }
-    return {0, 0}; 
   }
 
  private:
