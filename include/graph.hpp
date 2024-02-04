@@ -60,15 +60,6 @@ class Graph final {
     table_.set_class_fields(begin_v, end_v,
                             count_vertices(begin_v, end_v) );
     table_.fill(begin_v, end_v);
-#if 0
-    for (int i = 0; i < 4; ++i) {
-      for (int j = 0; j < table_.line_len_; ++j) {
-        std::cout << table_[i][j] << ' ';
-      }
-      std::cout << std::endl;
-    }
-    std::cout << std::endl;
-#endif
   }
 
   template <std::forward_iterator Iter>
@@ -104,7 +95,6 @@ class Graph final {
         }
       }
     }
-
     std::vector<std::pair<value_type, Color>> painted_vertices;
     std::transform(visited.begin(), visited.end(), std::back_inserter(painted_vertices),
                   [](auto &&pair) {
@@ -141,13 +131,15 @@ class Graph final {
 
   // TODO //
   edges_load::iterator insert_edge(const edge_type &edge) {
-    if (auto it = edge_load(edge); it != e_load_.end()) {
+    auto [v1, v2] = edge;
+    if (auto it = edge_load(edge); it != e_load_.cend()) {
       return it;
     }
+    auto ret_value = e_load_.emplace(v1, std::make_pair(v2, EdgeLoad()));
 
-    std::vector verts {edge.first, edge.second};
-    std::erase_if(verts, [&table = table_](auto &&v) { 
-      return std::find(table.begin(), table.end(), v) != table.end();
+    std::vector verts {std::pair{v1, 1}, std::pair{v2, 2}};
+    std::erase_if(verts, [&v_table = v_load_](auto &&p) { 
+      return v_table.find(p.first) != v_table.end();
     });
 
     auto old_table    = std::move(table_);
@@ -155,40 +147,80 @@ class Graph final {
     table_.nvertices_ = old_table.nvertices_ + verts.size();
     table_.line_len_  = table_.nvertices_ + table_.nedges_ * 2;
     
-    auto &old_data = old_table.data_;
     auto &new_data = table_.data_;
     new_data.resize(table_.line_len_ * 4);
     //filling first line
     std::iota(new_data.begin(), new_data.begin() + table_.line_len_,
               value_type {0});
     
-    auto &[v1, v2] = edge;
-    if (verts.empty()) {
-      std::copy(std::addressof(old_table[1][0]), std::addressof(old_table[1][old_table.line_len_]),
+    if (verts.empty()) { // if vertices have already met in the table
+      // copying the second line
+      std::copy(std::addressof(old_table[1][0]),
+                std::addressof(old_table[1][old_table.line_len_]),
                 std::addressof(table_[1][0]));
-      std::copy(std::addressof(old_table[2][0]), std::addressof(old_table[2][old_table.line_len_]),
-                std::addressof(table_[2][0]));
-      std::copy(std::addressof(old_table[3][0]), std::addressof(old_table[3][old_table.line_len_]),
-                std::addressof(table_[3][0]));
+      for (int id = 2; id < 4; ++id) {
+        // copying the third and the fourth lines
+        std::copy(std::addressof(old_table[id][0]), 
+                  std::addressof(old_table[id][old_table.line_len_]),
+                  std::addressof(table_[id][0]));
+      }
+      // rebalancing edges positions
+      replace_edges(v1, 1);
+      replace_edges(v2, 2);
+    } else { // if we have new vertices
+      for (auto pair : verts) {
+        v_load_[pair.first];
+      }
+      // copying old vertices to the second line
+      std::copy(old_table.begin(), old_table.end(), table_.begin());
+      // copying edges vertices to the second line
+      std::copy(std::addressof(old_table[1][old_table.nvertices_]),
+                std::addressof(old_table[1][old_table.line_len_]),
+                std::addressof(table_[1][table_.nvertices_]));
+      // because of the new vertices we need copy + increment old edges positions
+      auto increment_copy = [] (auto first, auto last, auto d_first,
+                               size_type inc_value, size_type limit) mutable {
+        std::transform(first, last, d_first,
+                       [inc_value, limit]
+                       (auto &&val) -> size_type {
+          if (static_cast<size_type>(val) < limit) { return val; }
+          return val + inc_value; 
+        });
+      };
+ 
+      auto verts_sz = verts.size();
+      auto limit    = old_table.nvertices_;
+      // filling third and fouth lines
+      for (size_type line_id = 2; line_id < 4; ++line_id) {
+        increment_copy(std::addressof(old_table[line_id][0]), 
+                       std::addressof(old_table[line_id][old_table.nvertices_]),
+                       std::addressof(table_[line_id][0]), verts_sz, limit);
 
-      auto id1 = table_.line_len_ - 2;
-      auto id2 = table_.line_len_ - 1;
-      table_[1][id1] = v1; 
-      table_[1][id2] = v2;
-      auto it1 = std::find(old_table.begin(), old_table.end(), v1);
-      auto it2 = std::find(old_table.begin(), old_table.end(), v2);
-      auto offset1 = std::distance(old_table.begin(), it1);
-      auto offset2 = std::distance(old_table.begin(), it2);
-      
-      auto old_last1 = table_[3][offset1];
-      auto old_last2 = table_[3][offset2];
+        increment_copy(std::addressof(old_table[line_id][old_table.nvertices_]),
+                       std::addressof(old_table[line_id][old_table.line_len_]),
+                       std::addressof(table_[line_id][table_.nvertices_]), 
+                       verts_sz, limit);
+      }
+      // setting next and prev edges for each new vertex
+      for (auto new_id = old_table.nvertices_; auto [vertex, order] : verts) {
+        auto offset = order == 1 ? table_.line_len_ - 2 : table_.line_len_ - 1;
 
-      table_[2][id1] = std::exchange(table_[2][old_last1], id1);
-      table_[2][id2] = std::exchange(table_[2][old_last2], id2);
+        table_[1][new_id] = table_[1][offset] = vertex;
+        table_[2][new_id] = table_[3][new_id] = offset;
+        table_[2][offset] = table_[3][offset] = new_id;
+        ++new_id;
+      }
 
-    } else {
+      std::vector tmp_stor {std::pair{v1, 1}, std::pair{v2, 2}};
+      for (auto &&[v, diff] : tmp_stor) {
+        if (std::find_if(verts.begin(), verts.end(),
+            [v] (auto &&pair) { return pair.first == v; }) == verts.end()) {
+          replace_edges(v, diff);
+        }
+      }
 
     }
+    return ret_value;
   }
 
   template <typename Iter>
@@ -196,7 +228,9 @@ class Graph final {
            detail::validEdgeType <typename std::iterator_traits<Iter>::value_type,
                                   value_type>
   void insert_edge(Iter begin, Iter end) {
-    std::for_each(begin, end, insert_edge);
+    for (; begin != end; ++begin) {
+      insert_edge(*begin);
+    }
   }
 
   void insert_edge(std::initializer_list<edge_type> ls) {
@@ -211,6 +245,18 @@ class Graph final {
       v_load.emplace(pair.second, vertex_load_type());
     });
     return v_load_.size();
+  }
+
+  void replace_edges(const value_type &v, size_type diff) {
+    auto it = std::find(table_.begin(), table_.end(), v);
+
+    auto old_last = table_[3][*(it - table_.line_len_)];
+    auto id = diff == 1 ? table_.line_len_ - 2 :
+                          table_.line_len_ - 1;
+    table_[2][id] = std::exchange(table_[2][old_last], id);
+    table_[3][id] = old_last;
+    table_[1][id] = v;
+
   }
 
   bool is_right_painted(value_type top_vert, value_type neighbour_vert,
@@ -235,9 +281,14 @@ class Graph final {
   edges_load::const_iterator find_edge(const edge_type &edge) const {
     auto &[v1, v2] = edge;
     auto [begin, end] = e_load_.equal_range(v1);
-    return std::find_if(begin, end, [&v2](auto &&pair) {
-             return pair.second.first == v2;
-           });
+    auto found_iter = std::find_if(begin, end, [v2](auto &&pair) {
+                        return pair.second.first == v2;
+                      });
+
+    if (found_iter == end) {
+      return e_load_.end();
+    }
+    return found_iter;
   }
 
  private:
