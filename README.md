@@ -19,10 +19,12 @@ cmake --build .
 ```
 The programm will be waiting for input data in stdin in such way:  
 ```bash
-<v1> -- <v2>, load  
+<v1> -- <v2>, load1  
+<v3> -- <v4>, load2  
+    ... 
 ```
-**v1, v2** - vertices defining an edge  
-**load** - edge atribut  
+**v1, v2, ...** - vertices defining an edges  
+**load1, load2 ...** - edge atributs  
 At the end, the program will output the painted graph. 
 ## How to run tests:
 ```bash
