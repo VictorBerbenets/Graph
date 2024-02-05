@@ -250,12 +250,8 @@ class Graph final {
               value_type {0});
 
     if (verts.empty()) { // if vertices have already met in the table
-      // copying the second line
-      std::copy(std::addressof(old_table[1][0]),
-                std::addressof(old_table[1][old_table.line_len_]),
-                std::addressof(table_[1][0]));
-      for (int id = 2; id < 4; ++id) {
-        // copying the third and the fourth lines
+      // copying the second, third and fourth lines
+      for (int id = 1; id < 4; ++id) {
         std::copy(std::addressof(old_table[id][0]),
                   std::addressof(old_table[id][old_table.line_len_]),
                   std::addressof(table_[id][0]));
