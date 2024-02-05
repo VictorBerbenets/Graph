@@ -228,8 +228,8 @@ class Graph final {
   const_iterator cend() const noexcept { return table_.cend(); }
   reverse_iterator rbegin() noexcept { return std::make_reverse_iterator(begin()); }
   reverse_iterator rend() noexcept { return std::make_reverse_iterator(end()); }
-  const_reverse_iterator crbegin() noexcept { return std::make_reverse_iterator(cbegin()); }
-  const_reverse_iterator crend() noexcept { return std::make_reverse_iterator(cend()); }
+  const_reverse_iterator crbegin() const noexcept { return std::make_reverse_iterator(cbegin()); }
+  const_reverse_iterator crend() const noexcept { return std::make_reverse_iterator(cend()); }
  private:
   void insert_edge_impl(const edge_type &edge) {
     auto [v1, v2] = edge;
