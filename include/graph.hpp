@@ -57,7 +57,8 @@ class Graph final {
       auto &&[edge, load] = pair;
       edges.push_back(edge);
       // saving edge load
-      e_load.emplace(edge.first, std::make_pair(edge.second, load));
+      e_load.emplace(edge.first, std::make_pair(edge.second, std::forward<
+                                                edge_load_type>(load)));
     });
 
     auto begin_v = edges.begin(), end_v = edges.end();
@@ -76,10 +77,10 @@ class Graph final {
   is_bipartite() const {
     painting_map visited;
     std::set<value_type> not_visited(table_.cbegin(), table_.cend());
-    std::for_each(table_.cbegin(), table_.cend(), [&visited, id = 0]
-                  (auto &&val) mutable {
-      visited[val] = {Color::Grey, id++};
-    });
+    std::transform(table_.cbegin(), table_.cend(), std::inserter(visited, visited.end()),
+                   [id = 0](auto &&key) mutable {
+                     return std::make_pair(key, std::pair{Color::Grey, id++});
+                   });
 
     std::stack<value_type> vertices;
     while(!not_visited.empty()) {
