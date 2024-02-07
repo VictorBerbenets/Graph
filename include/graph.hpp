@@ -244,7 +244,7 @@ class Graph final {
     table_.line_len_  = table_.nvertices_ + table_.nedges_ * 2;
 
     auto &new_data = table_.data_;
-    new_data.resize(table_.line_len_ * 4);
+    new_data.reserve(table_.line_len_ * 4);
     //filling first line
     std::iota(new_data.begin(), new_data.begin() + table_.line_len_,
               value_type {0});
