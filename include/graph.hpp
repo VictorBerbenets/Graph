@@ -86,19 +86,18 @@ class Graph final {
       auto n_visited_v = not_visited.begin();
       vertices.push(*n_visited_v);
       visited[*n_visited_v].first = Color::Blue; // first vertex is always blue
-      while (!vertices.empty()) {
-        auto top = vertices.top();
-        vertices.pop();
-        not_visited.erase(top);
 
-        for (size_type curr_id = table_[2][visited[top].second];
-             curr_id != visited[top].second; curr_id = table_[2][curr_id]) {
-          auto column = curr_id + get_edge_dir(curr_id);
-          if (!is_right_painted(top, table_[1][column],
-                                visited, vertices)) { return {}; }
-        }
+      auto top = vertices.top();
+      not_visited.erase(top);
+
+      for (size_type curr_id = table_[2][visited[top].second];
+           curr_id != visited[top].second; curr_id = table_[2][curr_id]) {
+        auto column = curr_id + get_edge_dir(curr_id);
+        if (!is_right_painted(top, table_[1][column],
+                              visited, vertices)) { return {}; }
       }
     }
+
     std::vector<std::pair<value_type, Color>> painted_vertices;
     std::transform(table_.cbegin(), table_.cend(), std::back_inserter(painted_vertices),
                   [&map = visited](auto &&val) {
