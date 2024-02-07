@@ -34,16 +34,12 @@ std::stringstream get_data(std::istream& is) {
   if (auto opt_vector = gr.is_bipartite(); opt_vector) {
     for (auto &&[vert, col] : opt_vector.value()) {
         str_stream << vert;
-        std::cout << vert;
       if (col == Color::Blue) {
         str_stream << " b ";
-        std::cout << " b ";
       } else {
         str_stream << " r ";
-        std::cout << " r ";
       }
     }
-    std::cout << std::endl;
   }
   return str_stream;
 }
@@ -85,7 +81,7 @@ int main(int argc, char **argv) {
   std::ifstream ans_file  {argv[2]};
 
   std::cout << (compare_answers<int>(test_file, ans_file) ? "passed" : 
-                                                   "not passed") << std::endl;
+                                                   "not passed");
 
 }
 

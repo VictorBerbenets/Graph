@@ -36,7 +36,7 @@ function run_tests {
 
                 echo -n -e "${purple}Test ${i}: ${usual}\n"
                 ${checker} ${tmp_check} ${ans_file} > compare_file.txt
-                if [[ $(< compare_file.txt) != "passed" ]]
+                if [ "$(cat compare_file.txt)" == "passed" ]
                 then
                     echo -e "${green}passed${usual}"
                 else
