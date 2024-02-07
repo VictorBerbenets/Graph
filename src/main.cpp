@@ -15,13 +15,11 @@ void print_bipartite_graph(const yLAB::Graph<T> &gr) {
   using Color = yLAB::Graph<T>::Color;
   if (auto opt_map = gr.is_bipartite(); opt_map) {
     for (auto &&[vert, col] : opt_map.value()) {
-      if (col == Color::Blue) {
-        std::cout << vert << " b ";
-      }
-    }
-    for (auto &&[vert, col] : opt_map.value()) {
+        std::cout << vert;
       if (col == Color::Red) {
-        std::cout << vert << " r ";
+        std::cout << " r ";
+      } else {
+        std::cout << " b ";
       }
     }
     std::cout << std::endl;

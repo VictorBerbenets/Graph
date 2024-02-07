@@ -57,8 +57,7 @@ class Graph final {
       auto &&[edge, load] = pair;
       edges.push_back(edge);
       // saving edge load
-      e_load.emplace(edge.first, std::make_pair(edge.second, std::forward<
-                                                edge_load_type>(load)));
+      e_load.emplace(edge.first, std::make_pair(edge.second, load));
     });
 
     auto begin_v = edges.begin(), end_v = edges.end();
@@ -101,9 +100,10 @@ class Graph final {
       }
     }
     std::vector<std::pair<value_type, Color>> painted_vertices;
-    std::transform(visited.begin(), visited.end(), std::back_inserter(painted_vertices),
-                  [](auto &&pair) {
-                    return std::make_pair(pair.first, pair.second.first);
+    std::transform(table_.cbegin(), table_.cend(), std::back_inserter(painted_vertices),
+                  [&map = visited](auto &&val) {
+                    auto color = map[val].first; 
+                    return std::make_pair(val, color);
                   });
     return {painted_vertices};
   }
