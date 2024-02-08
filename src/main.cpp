@@ -4,6 +4,7 @@
 #include <sstream>
 #include <algorithm>
 #include <utility>
+#include <string_view>
 #include <iomanip>
 
 #include "graph.hpp"
@@ -12,19 +13,28 @@ namespace {
 
 template <typename T>
 void print_bipartite_graph(const yLAB::Graph<T> &gr) {
-  using Color = yLAB::Graph<T>::Color;
-  if (auto opt_map = gr.is_bipartite(); opt_map) {
-    for (auto &&[vert, col] : opt_map.value()) {
-        std::cout << vert;
-      if (col == Color::Red) {
-        std::cout << " r ";
-      } else {
-        std::cout << " b ";
+  if (auto fractices = gr.is_bipartite(); fractices.size() == 2) {
+    const auto &[fr1, fr2] = std::make_pair(fractices[0], fractices[1]);
+    auto begin1 = fr1.begin(), begin2 = fr2.begin(),
+                  end1 = fr1.end(), end2 = fr2.end();
+    for (std::size_t counter = 0, end = std::max(fr1.size(), fr2.size());
+         counter < end; ++counter) {
+      if (begin1 != end1) {
+        std::cout << *begin1 << " b ";
+        ++begin1;
+      }
+      if (begin2 != end2) {
+        std::cout << *begin2 << " r ";
+        ++begin2;
       }
     }
     std::cout << std::endl;
   } else {
-    std::cout << "Graph isn't bipartite" << std::endl;
+    std::cout << "Graph isn't bipartite. Found odd-length cicle" << std::endl;
+    for (auto vertex : fractices[0]) {
+      std::cout << vertex << " -- ";
+    }
+    std::cout << fractices[0][0] << std::endl;
   }
 }
 

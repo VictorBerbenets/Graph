@@ -13,8 +13,6 @@ namespace {
 
 template <typename T>
 std::stringstream get_data(std::istream& is) {
-  using Color = yLAB::Graph<T>::Color;
-
   std::vector<std::pair<std::pair<int, int>, int>> data;
 
   std::string line;
@@ -31,15 +29,28 @@ std::stringstream get_data(std::istream& is) {
   yLAB::Graph<T> gr(data.cbegin(), data.cend());
   std::stringstream str_stream;
 
-  if (auto opt_vector = gr.is_bipartite(); opt_vector) {
-    for (auto &&[vert, col] : opt_vector.value()) {
-        str_stream << vert;
-      if (col == Color::Blue) {
-        str_stream << " b ";
-      } else {
-        str_stream << " r ";
+  if (auto fractices = gr.is_bipartite(); fractices.size() == 2) {
+    const auto &[fr1, fr2] = std::make_pair(fractices[0], fractices[1]);
+    auto begin1 = fr1.begin(), begin2 = fr2.begin(),
+                  end1 = fr1.end(), end2 = fr2.end();
+    for (std::size_t counter = 0, end = std::max(fr1.size(), fr2.size());
+         counter < end; ++counter) {
+      if (begin1 != end1) {
+        str_stream << *begin1 << " b ";
+        ++begin1;
+      }
+      if (begin2 != end2) {
+        str_stream << *begin2 << " r ";
+        ++begin2;
       }
     }
+    str_stream << std::endl;
+  } else {
+    str_stream << "Graph isn't bipartite. Found odd-length cicle" << std::endl;
+    for (auto vertex : fractices[0]) {
+      str_stream << vertex << " -- ";
+    }
+    str_stream << fractices[0][0] << std::endl;
   }
   return str_stream;
 }
