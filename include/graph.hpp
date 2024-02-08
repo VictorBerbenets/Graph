@@ -92,7 +92,7 @@ class Graph final {
         auto top = vertices.top();
         vertices.pop();
         not_visited.erase(top);
-        
+ 
         size_type edge_id = std::get<1>(visited[top]);
         for (size_type curr_id = table_[2][edge_id];
              curr_id != edge_id; curr_id = table_[2][curr_id]) {
@@ -105,14 +105,14 @@ class Graph final {
     }
     // divide the vertices of the graph into two parts
     graph_bipartite_type two_fractions(2);
-    for (auto vert = table_.cbegin(); vert != table_.cend(); ++vert) {
-      if (std::get<0>(visited[*vert]) == Color::Blue) {
-        two_fractions[0].push_back(*vert);
+    for (auto vert : table_) {
+      if (std::get<0>(visited[vert]) == Color::Blue) {
+        two_fractions[0].push_back(vert);
       } else {
-        two_fractions[1].push_back(*vert);
+        two_fractions[1].push_back(vert);
       }
     }
-    
+ 
     return two_fractions;
   }
 
@@ -230,8 +230,8 @@ class Graph final {
   size_type v_size() const noexcept { return table_.nvertices_; }
   size_type e_size() const noexcept { return table_.edges_; }
 
-  auto begin() noexcept { return table_.begin(); }
-  auto end() noexcept { return table_.end(); }
+  auto begin() noexcept { return table_.cbegin(); }
+  auto end() noexcept { return table_.cend(); }
   auto cbegin() const noexcept { return table_.cbegin(); }
   auto cend() const noexcept { return table_.cend(); }
   auto rbegin() noexcept { return std::make_reverse_iterator(begin()); }
@@ -259,7 +259,7 @@ class Graph final {
 
     if (verts.empty()) { // if vertices have already met in the table
       // copying the second, third and fourth lines
-      for (int id = 1; id < 4; ++id) {
+      for (auto id : {1, 2, 3}) {
         std::copy(std::addressof(old_table[id][0]),
                   std::addressof(old_table[id][old_table.line_len_]),
                   std::addressof(table_[id][0]));
@@ -290,7 +290,7 @@ class Graph final {
       auto verts_sz = verts.size();
       auto limit    = old_table.nvertices_;
       // filling third and fouth lines
-      for (size_type line_id = 2; line_id < 4; ++line_id) {
+      for (auto line_id : {2, 3}) {
         increment_copy(std::addressof(old_table[line_id][0]),
                        std::addressof(old_table[line_id][old_table.nvertices_]),
                        std::addressof(table_[line_id][0]), verts_sz, limit);

@@ -64,6 +64,8 @@ class Table final {
   // psevdo iterators which walks on vertices
   iterator begin() noexcept { return data_.begin() + line_len_; }
   iterator end()   noexcept { return begin() + nvertices_; }
+  const_iterator begin() const noexcept { return data_.begin() + line_len_; }
+  const_iterator end()   const noexcept { return begin() + nvertices_; }
   const_iterator cbegin() const noexcept { return data_.cbegin() + line_len_; }
   const_iterator cend()   const noexcept { return cbegin() + nvertices_; }
  private:
