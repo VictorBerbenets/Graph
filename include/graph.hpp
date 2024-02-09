@@ -10,6 +10,7 @@
 #include <tuple>
 #include <initializer_list>
 #include <unordered_map>
+#include <type_traits>
 #include <iterator>
 #include <memory>
 #include <set>
@@ -45,8 +46,8 @@ class Graph final {
   constexpr Graph() = default;
 
   template <typename EdgeType>
-  requires std::same_as<EdgeType, edge_type> ||
-           std::same_as<EdgeType, edge_load_pair>
+  requires std::is_convertible_v<EdgeType, edge_type> ||
+           std::is_convertible_v<EdgeType, edge_load_type>
   Graph(std::initializer_list<EdgeType> ls)
       : Graph(ls.begin(), ls.end()) {}
 
