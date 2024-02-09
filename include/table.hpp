@@ -18,7 +18,9 @@ class Graph;
 namespace detail {
 
 template <typename CompType, typename VertexT>
-concept validEdgeType = std::same_as<CompType, std::pair<VertexT, VertexT>>;
+concept validEdgeType = requires(CompType val) {
+  { val } -> std::convertible_to<std::pair<VertexT, VertexT>>;
+};
 
 // Knut's graph representation
 template <std::integral T>

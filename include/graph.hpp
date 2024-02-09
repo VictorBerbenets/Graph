@@ -51,8 +51,7 @@ class Graph final {
       : Graph(ls.begin(), ls.end()) {}
 
   template <std::forward_iterator Iter>
-  requires std::same_as<typename std::iterator_traits<Iter>::value_type,
-                        edge_load_pair>
+  requires requires (Iter it) { {*it} -> std::convertible_to<edge_load_pair>;}
   Graph(Iter begin, Iter end) {
     std::vector<edge_type> edges;
     std::for_each(begin, end, [&e_load = e_load_, &edges](auto &&pair) {
@@ -69,8 +68,7 @@ class Graph final {
   }
 
   template <std::forward_iterator Iter>
-  requires std::same_as<typename std::iterator_traits<Iter>::value_type,
-                        edge_type>
+  requires requires (Iter it) { {*it} -> std::convertible_to<edge_type>;}
   Graph(Iter begin, Iter end)
       : table_ (begin, end, count_vertices(begin, end)) {}
 
