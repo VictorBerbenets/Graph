@@ -55,24 +55,24 @@ class Table final {
     fill(begin, end);
   }
 
-  ProxyBracket operator[] (size_type nline) {
+  constexpr ProxyBracket operator[] (size_type nline) {
     return ProxyBracket(std::addressof(data_[nline * line_len_]));
   }
 
-  const ProxyBracket operator[] (size_type nline) const {
+  constexpr const ProxyBracket operator[] (size_type nline) const {
     return ProxyBracket(std::addressof(const_cast<reference>(data_[nline * line_len_])));
   }
 
   // psevdo iterators which walks on vertices
-  iterator begin() noexcept { return data_.begin() + line_len_; }
-  iterator end()   noexcept { return begin() + nvertices_; }
-  const_iterator begin() const noexcept { return data_.begin() + line_len_; }
-  const_iterator end()   const noexcept { return begin() + nvertices_; }
-  const_iterator cbegin() const noexcept { return data_.cbegin() + line_len_; }
-  const_iterator cend()   const noexcept { return cbegin() + nvertices_; }
+  constexpr iterator begin() noexcept { return data_.begin() + line_len_; }
+  constexpr iterator end()   noexcept { return begin() + nvertices_; }
+  constexpr const_iterator begin() const noexcept { return data_.begin() + line_len_; }
+  constexpr const_iterator end()   const noexcept { return begin() + nvertices_; }
+  constexpr const_iterator cbegin() const noexcept { return data_.cbegin() + line_len_; }
+  constexpr const_iterator cend()   const noexcept { return cbegin() + nvertices_; }
  private:
   template <std::forward_iterator Iter>
-  void set_class_fields(Iter begin, Iter end, size_type nvertices) {
+  constexpr void set_class_fields(Iter begin, Iter end, size_type nvertices) {
     nedges_    = static_cast<size_type>(std::distance(begin, end)),
     nvertices_ = nvertices,
     line_len_  = nvertices_ + nedges_ * EdgeAddition,
@@ -80,7 +80,7 @@ class Table final {
   }
 
   template <std::forward_iterator Iter>
-  void fill(Iter begin, Iter end) {
+  constexpr void fill(Iter begin, Iter end) {
     vertices_map vertices;
 
     auto &table = *this;
@@ -128,14 +128,14 @@ class Table final {
 
   class ProxyBracket final {
    public:
-    ProxyBracket(pointer ptr) noexcept
+    constexpr ProxyBracket(pointer ptr) noexcept
         : line_ptr_ {ptr} {}
 
-    reference operator[](size_type ncolumn) {
+    constexpr reference operator[](size_type ncolumn) {
       return line_ptr_[ncolumn];
     }
 
-    const_reference operator[](size_type ncolumn) const {
+    constexpr const_reference operator[](size_type ncolumn) const {
       return line_ptr_[ncolumn];
     }
    private:
