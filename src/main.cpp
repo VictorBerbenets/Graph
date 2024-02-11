@@ -42,7 +42,7 @@ auto get_data(std::istream& is) {
   std::vector<std::pair<std::pair<int, int>, int>> data;
 
   std::string line;
-  while(std::getline(is, line)) {
+  while(std::getline(is >> std::ws, line)) {
     std::remove(line.begin(), line.end(), '-');
     std::remove(line.begin(), line.end(), ',');
 
