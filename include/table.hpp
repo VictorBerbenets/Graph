@@ -22,7 +22,7 @@ concept validEdgeType = requires(CompType val) {
   { val } -> std::convertible_to<std::pair<VertexT, VertexT>>;
 };
 
-// Knut's graph representation
+// Knuth's graph representation
 template <std::integral T>
 class Table final {
  public:
@@ -39,7 +39,7 @@ class Table final {
   using vertices_map  = std::unordered_map<value_type, size_type>;
 
   static constexpr size_type NLine        = 4; // table lines
-  static constexpr size_type EdgeAddition = 2; // every edge stores in two cells
+  static constexpr size_type EdgeAddition = 2; // every edge is stored in two cells
 
   class ProxyBracket;
  public:

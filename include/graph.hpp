@@ -105,11 +105,8 @@ class Graph final {
     // divide the vertices of the graph into two parts
     graph_bipartite_type two_fractions(2);
     for (auto vert : table_) {
-      if (std::get<0>(visited[vert]) == Color::Blue) {
-        two_fractions[0].push_back(vert);
-      } else {
-        two_fractions[1].push_back(vert);
-      }
+      std::get<0>(visited[vert]) == Color::Blue ? two_fractions[0].push_back(vert) :
+                                                  two_fractions[1].push_back(vert); 
     }
  
     return two_fractions;
