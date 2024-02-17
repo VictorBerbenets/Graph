@@ -82,22 +82,20 @@ class Table final {
   template <std::forward_iterator Iter>
   constexpr void fill(Iter begin, Iter end) {
     vertices_map vertices;
-
+    
     auto &table = *this;
     auto insert_if = [vert_id = 0ul, &vertices, &table]
                      (const  edge_type &pair) mutable {
-      std::vector collector {pair.first, pair.second};
-      for (auto &&vertex : collector) {
+      for (auto &&vertex : {pair.first, pair.second}) {
         if (vertices.find(vertex) == vertices.end()) {
-          table[1][vert_id] = vertex;
-          vertices.insert({vertex, vert_id++});
+          table[1][vert_id++] = vertex;
+          vertices[vertex];
         }
       }
     };
-
     std::for_each(begin, end, insert_if);
-    // filling first line
-    std::iota(data_.begin(), data_.begin() + line_len_, value_type {0});
+    // sorting vertices
+    std::sort(table.begin(), table.end());
     // filling second line
     std::for_each(begin, end, [id = nvertices_, &table]
                               (auto &&pair) mutable {
@@ -105,18 +103,24 @@ class Table final {
                                 table[1][id++] = pair.second;
                               });
     // filling third line
-    auto map_copy = vertices;
+    for (size_type ident = 0; ident < line_len_; ++ident) {
+      table[0][ident] = ident;
+      if (ident < nvertices_) {
+        table[3][ident] = ident;
+      }
+    }
     for (size_type curr_id = nvertices_; curr_id < line_len_; ++curr_id) {
-      auto vertex = table[1][curr_id];
-      table[2][vertices[vertex]] = curr_id;
-      table[2][curr_id ] = map_copy[vertex];
-      table[3][curr_id ] = vertices[vertex];
-      vertices[vertex] = curr_id;
+      auto vert_id = find_vert_id(table[1][curr_id]);
+      table[3][curr_id] = table[3][vert_id];
+      table[2][curr_id] = vert_id;
+      table[2][table[3][vert_id]] = curr_id;
+      table[3][vert_id] = curr_id;
     }
-    // filling fourth line
-    for (size_type table_id = 0; table_id < nvertices_; ++table_id) {
-      table[3][table_id] = vertices[table[1][table_id]];
-    }
+  }
+  
+  size_type find_vert_id(value_type vert) const {
+    auto vert_iter = std::lower_bound(begin(), end(), vert);
+    return *(vert_iter - line_len_);
   }
 
   template <std::integral, typename, typename> friend class ::yLAB::Graph;
