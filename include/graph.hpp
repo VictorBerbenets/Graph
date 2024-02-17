@@ -24,17 +24,18 @@ template <std::integral T, typename VertexLoad = int,
           typename EdgeLoad = int>
 class Graph final {
   enum class Color : char {Grey, Blue, Red}; // for coloring vertices
+  using table_type = detail::Table<T, VertexLoad, EdgeLoad>;
  public:
   using value_type         = T;
-  using edge_type          = detail::Table<value_type>::edge_type;
-  using size_type          = detail::Table<value_type>::size_type;
+  using edge_type          = table_type::edge_type;
+  using size_type          = table_type::size_type;
   using vertex_load_type   = VertexLoad;
   using edge_load_type     = EdgeLoad;
   using vertices_load      = std::unordered_map<value_type, vertex_load_type>;
   using edges_load         = std::unordered_multimap<value_type, std::pair<const value_type,
                                                                  edge_load_type>>;
-  using iterator               = detail::Table<value_type>::const_iterator;
-  using const_iterator         = detail::Table<value_type>::const_iterator;
+  using iterator               = table_type::const_iterator;
+  using const_iterator         = table_type::const_iterator;
   using reverse_iterator       = std::reverse_iterator<iterator>;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
  private:
@@ -75,10 +76,14 @@ class Graph final {
 
   graph_bipartite_type is_bipartite() const {
     painting_map visited;
-    std::set<value_type> not_visited(table_.cbegin(), table_.cend());
+    std::set<value_type> not_visited;
+    for (auto any : table_) {
+      not_visited.insert(std::any_cast<T>(any));
+    }
     std::transform(table_.cbegin(), table_.cend(), std::inserter(visited, visited.end()),
                    [id = 0](auto &&key) mutable {
-                     return std::make_pair(key, std::make_tuple(Color::Grey, id++,
+                     return std::make_pair(std::any_cast<value_type>(key),
+                                           std::make_tuple(Color::Grey, id++,
                                            value_type {0}));
                    });
 
@@ -93,18 +98,19 @@ class Graph final {
         not_visited.erase(top);
  
         size_type edge_id = std::get<1>(visited[top]);
-        for (size_type curr_id = table_[2][edge_id];
-             curr_id != edge_id; curr_id = table_[2][curr_id]) {
+        for (size_type curr_id = std::any_cast<size_type>(table_[2][edge_id]);
+             curr_id != edge_id; curr_id = std::any_cast<size_type>(table_[2][curr_id])) {
           auto column = curr_id + get_edge_dir(curr_id);
-          if (!is_right_painted(top, table_[1][column], visited, vertices)) {
-            return get_odd_length_cicle(visited, table_[1][column], top);
+          if (!is_right_painted(top, std::any_cast<value_type>(table_[1][column]), visited, vertices)) {
+            return get_odd_length_cicle(visited, std::any_cast<value_type>(table_[1][column]), top);
           }
         }
       }    
     }
     // divide the vertices of the graph into two parts
     graph_bipartite_type two_fractions(2);
-    for (auto vert : table_) {
+    for (auto any : table_) {
+      auto vert = std::any_cast<value_type>(any);
       std::get<0>(visited[vert]) == Color::Blue ? two_fractions[0].push_back(vert) :
                                                   two_fractions[1].push_back(vert); 
     }
@@ -387,7 +393,7 @@ class Graph final {
  private:
   edges_load e_load_;
   vertices_load v_load_;
-  detail::Table<value_type> table_;
+  table_type table_;
 };
 
 } // <--- namespace yLAB

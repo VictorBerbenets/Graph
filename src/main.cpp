@@ -58,7 +58,7 @@ auto get_data(std::istream& is) {
 
 int main() {
   auto data = get_data(std::cin);
-  yLAB::Graph<int> g(data.begin(), data.end());
+  yLAB::Graph<int, int, int> g(data.begin(), data.end());
   print_bipartite_graph(g);
 }
 
