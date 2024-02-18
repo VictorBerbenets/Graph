@@ -12,6 +12,7 @@
 #include <type_traits>
 #include <iterator>
 #include <memory>
+#include <unordered_map>
 #include <set>
 #include <map>
 
@@ -71,44 +72,48 @@ class Graph final {
   template <std::forward_iterator Iter>
   requires requires (Iter it) { {*it} -> std::convertible_to<edge>;}
   Graph(Iter begin, Iter end) {
-    std::set<vertex_type> vertices;
+    std::unordered_map<vertex_type, size_type> vertices;
     // counting unique vertices
     for (auto curr_iter = begin; curr_iter != end; ++curr_iter, ++nedges_) {
       for (auto vertex : {curr_iter->first, curr_iter->second}) {
         if (vertices.find(vertex) == vertices.end()) {
-          vertices.insert(vertex);
+          vertices.insert({vertex, nvertices_++});
         }
       }
     }
-    nvertices_ = vertices.size();
     line_len_  = nvertices_ + nedges_ * EdgeAddition;
     data_.reserve(line_len_ * NLine);
     
     // filling part of the second line
-    for (size_type id = 0; auto vertex : vertices) {
-      (*this)[1][id++]. template emplace<1>(vertex);
+    for (size_type id = 0; id < nvertices_; ++id) {
+      (*this)[1][id]. template emplace<0>(0);
     }
 
     // filling first line and part of the fourth
     for (size_type ident = 0; ident < line_len_; ++ident) {
       (*this)[0][ident]. template emplace<0>(ident);
       if (ident < nvertices_) {
+        (*this)[2][ident]. template emplace<0>(ident);
         (*this)[3][ident]. template emplace<0>(ident);
       }
     }
     // filling another part of second line
-    for (size_type id = nvertices_; begin != end; ++begin) {
+    for (size_type curr_id = nvertices_; begin != end;
+         ++begin) {
       for (auto vertex : {begin->first, begin->second}) {
-        (*this)[1][id++]. template emplace<1>(vertex);
+        (*this)[1][curr_id]. template emplace<1>(vertex);
+        
+        auto vert_id = vertices[vertex];
+        (*this)[2][curr_id]. template emplace<0>(std::get<0>((*this)[2][vert_id]));
+        (*this)[2][vert_id]. template emplace<0>(curr_id);
+        (*this)[3][curr_id]. template emplace<0>(vert_id);
+        vertices[vertex] = curr_id;
       }
     }
-    // filling third and fourth lines
-    for (size_type curr_id = nvertices_; curr_id < line_len_; ++curr_id) {
-      auto vert_id = find_vert_id((*this)[1][curr_id]);
-      (*this)[3][curr_id]. template emplace<0>(std::get<0>((*this)[3][vert_id]));
-      (*this)[2][curr_id]. template emplace<0>(vert_id);
-      (*this)[2][std::get<0>((*this)[3][vert_id])]. template emplace<0>(curr_id);
-      (*this)[3][vert_id]. template emplace<0>(curr_id);
+
+    for (auto [vert, end_edge] : vertices) {
+      auto vert_id = std::get<0>((*this)[2][end_edge]);
+      (*this)[3][vert_id]. template emplace<0>(end_edge);
     }
   }
 
@@ -120,7 +125,6 @@ class Graph final {
                      return std::make_pair(key, std::make_tuple(Color::Grey, id++,
                                            value_type {0}));
                    });
-
     auto &table = *this;
     std::stack<value_type> vertices;
     while(!not_visited.empty()) {
