@@ -2,6 +2,7 @@
 
 #include <iterator>
 #include <any>
+#include <variant>
 
 namespace yLAB {
 
@@ -12,17 +13,18 @@ class Table;
 
 } // <--- namespace detail
 
-template <typename T>
+template <typename T, typename VertexLoad, typename EdgeLoad>
 class TableIterator {
 public:
-    using return_type       = T;
+    using value_type        = T;
+    using variant           = std::variant<std::size_t, value_type, VertexLoad,
+                                           EdgeLoad>;
     using iterator_category = std::contiguous_iterator_tag;
-    using value_type        = std::any;
-    using pointer           = value_type*;
+    using pointer           = variant*;
     using reference         = value_type&;
-    using const_pointer     = const value_type*;
+    using const_pointer     = const variant*;
     using const_reference   = const value_type&;
-    using difference_type   = int;
+    using difference_type   = std::ptrdiff_t;
 
     TableIterator() = default;
 
@@ -54,11 +56,11 @@ public:
         return tmp;
     }
 
-    const T& operator*() const noexcept { return *static_cast<T*>(ptr_); }
-    const T* operator->() const noexcept { return std::addressof(std::any_cast<T>(ptr_)); }
-    T& operator*() noexcept { return *static_cast<T*>(ptr_); }
-    T* operator->() noexcept { return std::addressof(std::any_cast<T>(ptr_)); }
-    
+    const T& operator*() const noexcept { return std::get<1>(*ptr_); }
+    T& operator*() noexcept { return std::get<1>(*ptr_); }
+    const T* operator->() const noexcept { return std::addressof(std::get<1>(*ptr_)); }
+    T* operator->() noexcept { return std::addressof(std::get<1>(*ptr_)); }
+ 
     auto operator<=>(const TableIterator &rhs) const = default;
     
     difference_type operator-(TableIterator rhs) noexcept {

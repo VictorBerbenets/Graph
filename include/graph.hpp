@@ -77,13 +77,12 @@ class Graph final {
   graph_bipartite_type is_bipartite() const {
     painting_map visited;
     std::set<value_type> not_visited;
-    for (auto any : table_) {
-      not_visited.insert(std::any_cast<T>(any));
+    for (auto vert : table_) {
+      not_visited.insert(vert);
     }
     std::transform(table_.cbegin(), table_.cend(), std::inserter(visited, visited.end()),
                    [id = 0](auto &&key) mutable {
-                     return std::make_pair(std::any_cast<value_type>(key),
-                                           std::make_tuple(Color::Grey, id++,
+                     return std::make_pair(key, std::make_tuple(Color::Grey, id++,
                                            value_type {0}));
                    });
 
@@ -98,19 +97,18 @@ class Graph final {
         not_visited.erase(top);
  
         size_type edge_id = std::get<1>(visited[top]);
-        for (size_type curr_id = std::any_cast<size_type>(table_[2][edge_id]);
-             curr_id != edge_id; curr_id = std::any_cast<size_type>(table_[2][curr_id])) {
+        for (size_type curr_id = std::get<0>(table_[2][edge_id]);
+             curr_id != edge_id; curr_id = std::get<0>(table_[2][curr_id])) {
           auto column = curr_id + get_edge_dir(curr_id);
-          if (!is_right_painted(top, std::any_cast<value_type>(table_[1][column]), visited, vertices)) {
-            return get_odd_length_cicle(visited, std::any_cast<value_type>(table_[1][column]), top);
+          if (!is_right_painted(top, std::get<1>(table_[1][column]), visited, vertices)) {
+            return get_odd_length_cicle(visited, std::get<1>(table_[1][column]), top);
           }
         }
       }    
     }
     // divide the vertices of the graph into two parts
     graph_bipartite_type two_fractions(2);
-    for (auto any : table_) {
-      auto vert = std::any_cast<value_type>(any);
+    for (auto vert : table_) {
       std::get<0>(visited[vert]) == Color::Blue ? two_fractions[0].push_back(vert) :
                                                   two_fractions[1].push_back(vert); 
     }
@@ -340,7 +338,6 @@ class Graph final {
     table_[2][id] = std::exchange(table_[2][old_last], id);
     table_[3][id] = old_last;
     table_[1][id] = v;
-
   }
 
   bool is_right_painted(value_type top_vert, value_type neighbour_vert,

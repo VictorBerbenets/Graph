@@ -7,8 +7,8 @@
 #include <numeric>
 #include <unordered_map>
 #include <unordered_set>
-//#include <variant>
-#include <any>
+#include <variant>
+//#include <any>
 #include <memory>
 #include <iterator>
 
@@ -29,26 +29,22 @@ concept validEdgeType = requires(CompType val) {
 // Knuth's graph representation
 template <std::integral T, typename VertexLoad, typename EdgeLoad>
 class Table final {
-  using table_type = std::any;
  public:
   using size_type        = std::size_t;
-  using value_type       = table_type;
   using vertex_type      = T;
-  using pointer          = std::vector<value_type>::pointer;
-  using reference        = std::vector<value_type>::reference;
-  using const_pointer    = std::vector<value_type>::const_pointer;
-  using const_reference  = std::vector<value_type>::const_reference;
+  using table_type       = std::variant<size_type, vertex_type, VertexLoad,
+                                        EdgeLoad>;
+  using pointer          = std::vector<table_type>::pointer;
+  using reference        = std::vector<table_type>::reference;
+  using const_pointer    = std::vector<table_type>::const_pointer;
+  using const_reference  = std::vector<table_type>::const_reference;
   using edge_type        = std::pair<vertex_type, vertex_type>;
-  using iterator         = ::yLAB::TableIterator<vertex_type>;
-  using const_iterator   = ::yLAB::TableIterator<const vertex_type>;
-#if 0
-  using iterator         = std::vector<value_type>::iterator;
-  using const_iterator   = std::vector<value_type>::const_iterator;
-#endif
+  using iterator         = ::yLAB::TableIterator<vertex_type, VertexLoad, EdgeLoad>;
+  using const_iterator   = ::yLAB::TableIterator<vertex_type, VertexLoad, EdgeLoad>;
  private:
   using vertices_map  = std::unordered_map<vertex_type, size_type>;
 
-  static constexpr size_type NLine        = 4; // table lines
+  static constexpr size_type NLine        = 5; // table lines
   static constexpr size_type EdgeAddition = 2; // every edge is stored in two cells
 
   class ProxyBracket;
@@ -56,7 +52,8 @@ class Table final {
   constexpr Table() = default;
 
   template <std::forward_iterator Iter>
-  requires validEdgeType <typename std::iterator_traits<Iter>::value_type, value_type>
+  requires validEdgeType <typename std::iterator_traits<Iter>::vertex_type,
+                          vertex_type>
   constexpr Table(Iter begin, Iter end, size_type vertices_num)
       : nedges_    {static_cast<size_type>(std::distance(begin, end))},
         nvertices_ {vertices_num},
@@ -76,9 +73,9 @@ class Table final {
   // psevdo iterators which walks on vertices
   constexpr iterator begin() noexcept { return std::addressof(data_[line_len_]); }
   constexpr iterator end()   noexcept { return begin() + nvertices_; }
-  constexpr const_iterator begin() const noexcept { return const_cast<std::any*>(std::addressof(data_[line_len_])); }
+  constexpr const_iterator begin() const noexcept { return const_cast<table_type*>(std::addressof(data_[line_len_])); }
   constexpr const_iterator end()   const noexcept { return begin() + nvertices_; }
-  constexpr const_iterator cbegin() const noexcept { return data_.cbegin() + line_len_; }
+  constexpr const_iterator cbegin() const noexcept { return const_cast<table_type*>(std::addressof(data_[line_len_])); }
   constexpr const_iterator cend()   const noexcept { return cbegin() + nvertices_; }
  private:
   template <std::forward_iterator Iter>
@@ -92,50 +89,44 @@ class Table final {
   template <std::forward_iterator Iter>
   constexpr void fill(Iter begin, Iter end) {
     vertices_map vertices;
-    
     auto &table = *this;
     auto insert_if = [vert_id = 0ul, &vertices, &table]
                      (const edge_type &pair) mutable {
       for (auto vertex : {pair.first, pair.second}) {
         if (vertices.find(vertex) == vertices.end()) {
-          table[1][vert_id++] = vertex;
+          table[1][vert_id++]. template emplace<1>(vertex);
           vertices[vertex];
         }
       }
     };
     std::for_each(begin, end, insert_if);
-    // sorting vertices
-    std::sort(table.begin(), table.end(), [](auto &any1, auto &any2) {
-      return std::any_cast<vertex_type>(any1) < std::any_cast<vertex_type>(any2);
-    });
-    // filling second line
+
+    std::sort(table.begin(), table.end());
+
     std::for_each(begin, end, [id = nvertices_, &table]
                               (auto &&pair) mutable {
-                                table[1][id++] = pair.first;
-                                table[1][id++] = pair.second;
+                                table[1][id++]. template emplace<1>(pair.first);
+                                table[1][id++]. template emplace<1>(pair.second);
                               });
     // filling third line
     for (size_type ident = 0; ident < line_len_; ++ident) {
-      table[0][ident] = ident;
+      table[0][ident]. template emplace<0>(ident);
       if (ident < nvertices_) {
-        table[3][ident] = ident;
+        table[3][ident]. template emplace<0>(ident);
       }
     }
     for (size_type curr_id = nvertices_; curr_id < line_len_; ++curr_id) {
-      auto vert_id = find_vert_id(std::any_cast<vertex_type>(table[1][curr_id]));
-      table[3][curr_id] = std::any_cast<size_type>(table[3][vert_id]);
-      table[2][curr_id] = vert_id;
-      table[2][std::any_cast<size_type>(table[3][vert_id])] = curr_id;
-      table[3][vert_id] = curr_id;
+      auto vert_id = find_vert_id(table[1][curr_id]);
+      table[3][curr_id]. template emplace<0>(std::get<0>(table[3][vert_id]));
+      table[2][curr_id]. template emplace<0>(vert_id);
+      table[2][std::get<0>(table[3][vert_id])]. template emplace<0>(curr_id);
+      table[3][vert_id]. template emplace<0>(curr_id);
     }
   }
   
-  size_type find_vert_id(vertex_type vert) const {
-    auto vert_iter = std::lower_bound(begin(), end(), vert,
-                                      [](auto any, auto v) {
-                                        return std::any_cast<vertex_type>(any) < v;
-                                      });
-    return std::any_cast<size_type>(*(vert_iter - line_len_));
+  size_type find_vert_id(const table_type &var) const {
+    auto vert_iter = std::lower_bound(cbegin(), cend(), std::get<1>(var));
+    return std::get<0>(*(vert_iter.ptr_ - line_len_));
   }
 
   template <std::integral, typename, typename> friend class ::yLAB::Graph;
