@@ -108,6 +108,7 @@ class Graph final {
         (*this)[2][vert_id]. template emplace<0>(curr_id);
         (*this)[3][curr_id]. template emplace<0>(vert_id);
         vertices[vertex] = curr_id;
+        ++curr_id;
       }
     }
 
@@ -115,6 +116,27 @@ class Graph final {
       auto vert_id = std::get<0>((*this)[2][end_edge]);
       (*this)[3][vert_id]. template emplace<0>(end_edge);
     }
+#if 0
+    for (int i = 0; i < 4; ++i) {
+      for (int j = 0; j < line_len_; ++j) {
+        if (i != 1) {
+          std::cout << std::get<0>((*this)[i][j]) << ' ';
+          if (std::get<0>((*this)[i][j]) < 10) std::cout << ' ';
+        } else {
+          if (j < nvertices_) {
+            std::cout << std::get<0>((*this)[i][j]) << ' ';
+            if (std::get<0>((*this)[i][j]) < 10) std::cout << ' ';
+          }
+          else {
+            std::cout << std::get<1>((*this)[i][j]) << ' ';
+            if (std::get<1>((*this)[i][j]) < 10) std::cout << ' ';
+          }
+        }
+      }
+      std::cout << std::endl;
+    }
+      std::cout << std::endl;
+#endif
   }
 
   graph_bipartite_type is_bipartite() const {
