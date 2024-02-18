@@ -13,7 +13,8 @@ namespace {
 
 template <typename T>
 std::stringstream get_data(std::istream& is) {
-  std::vector<std::pair<std::pair<int, int>, int>> data;
+  std::vector<std::pair<int, int>> edges;
+  std::vector<int> load_data;
 
   std::string line;
   while(std::getline(is, line)) {
@@ -23,10 +24,12 @@ std::stringstream get_data(std::istream& is) {
     std::istringstream istream {line};
     int v1 {0}, v2 {0}, load{0};
     istream >> v1 >> v2;
-    data.emplace_back(std::make_pair(v1, v2), load);
+    edges.emplace_back(std::make_pair(v1, v2));
+    load_data.push_back(load);
   }
 
-  yLAB::Graph<T> gr(data.cbegin(), data.cend());
+  yLAB::Graph<int, int, int> gr(edges.begin(), edges.end(),
+                              load_data.begin(), load_data.end());
   std::stringstream str_stream;
 
   if (auto fractices = gr.is_bipartite(); fractices.size() == 2) {

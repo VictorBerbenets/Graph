@@ -6,15 +6,9 @@
 
 namespace yLAB {
 
-namespace detail {
-
-template <std::integral, typename, typename>
-class Table;
-
-} // <--- namespace detail
 
 template <typename T, typename VertexLoad, typename EdgeLoad>
-class TableIterator {
+class GraphIterator {
 public:
     using value_type        = T;
     using variant           = std::variant<std::size_t, value_type, VertexLoad,
@@ -26,54 +20,54 @@ public:
     using const_reference   = const value_type&;
     using difference_type   = std::ptrdiff_t;
 
-    TableIterator() = default;
+    GraphIterator() = default;
 
-    TableIterator& operator+=(difference_type n) noexcept {
+    GraphIterator& operator+=(difference_type n) noexcept {
         ptr_ += n;
         return *this;
     }
 
-    TableIterator& operator-=(difference_type n) noexcept {
+    GraphIterator& operator-=(difference_type n) noexcept {
         ptr_ -= n;
         return *this;
     }
 
-    TableIterator operator+(difference_type n) const noexcept { return {ptr_ + n}; }
-    TableIterator operator-(difference_type n) const noexcept { return {ptr_ - n}; }
+    GraphIterator operator+(difference_type n) const noexcept { return {ptr_ + n}; }
+    GraphIterator operator-(difference_type n) const noexcept { return {ptr_ - n}; }
 
 
-    TableIterator& operator++() noexcept { ++ptr_; return *this; }
-    TableIterator& operator--() noexcept { --ptr_; return *this; }
+    GraphIterator& operator++() noexcept { ++ptr_; return *this; }
+    GraphIterator& operator--() noexcept { --ptr_; return *this; }
 
-    TableIterator operator++(int n) noexcept{
+    GraphIterator operator++(int n) noexcept{
         auto tmp = *this;
         ++(*this);
         return tmp;
     }
-    TableIterator operator--(int n) noexcept {
+    GraphIterator operator--(int n) noexcept {
         auto tmp = *this;
         --(*this);
         return tmp;
     }
 
-    const T& operator*() const noexcept { return std::get<1>(*ptr_); }
-    T& operator*() noexcept { return std::get<1>(*ptr_); }
-    const T* operator->() const noexcept { return std::addressof(std::get<1>(*ptr_)); }
-    T* operator->() noexcept { return std::addressof(std::get<1>(*ptr_)); }
+    const_reference operator*() const noexcept { return std::get<1>(*ptr_); }
+    reference operator*() noexcept { return std::get<1>(*ptr_); }
+    const value_type* operator->() const noexcept { return std::addressof(std::get<1>(*ptr_)); }
+    value_type* operator->() noexcept { return std::addressof(std::get<1>(*ptr_)); }
  
-    auto operator<=>(const TableIterator &rhs) const = default;
+    auto operator<=>(const GraphIterator &rhs) const = default;
     
-    difference_type operator-(TableIterator rhs) noexcept {
+    difference_type operator-(GraphIterator rhs) noexcept {
         return ptr_ - rhs.ptr_;
     }
 
-    template <std::integral, typename, typename> friend class detail::Table;
+    template <std::integral, typename, typename> friend class Graph;
 private:
     pointer ptr_;
 
-    TableIterator(pointer ptr)
+    GraphIterator(pointer ptr)
     : ptr_ {ptr} {}
-}; // <--- class TableIterator
+}; // <--- class GraphIterator
 
 } // <--- namespace yLAB
 
