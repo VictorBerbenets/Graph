@@ -2,7 +2,6 @@
 
 #include <iostream>
 #include <vector>
-#include <stack>
 #include <algorithm>
 #include <concepts>
 #include <optional>
@@ -13,7 +12,6 @@
 #include <iterator>
 #include <memory>
 #include <unordered_map>
-#include <set>
 
 #include "iterator.hpp"
 
@@ -117,33 +115,28 @@ class Graph final {
   }
 
   graph_bipartite_type is_bipartite() const {
-    std::set<value_type> not_visited(cbegin(), cend());
     painting_map visited;
     std::transform(cbegin(), cend(), std::inserter(visited, visited.end()),
                    [id = 0](auto &&key) mutable {
                      return std::make_pair(key, std::make_tuple(Color::Grey, id++,
                                            value_type {0}));
                    });
+
     auto &table = *this;
-    std::stack<value_type> vertices;
-    while(!not_visited.empty()) {
-      auto n_visited_v = not_visited.begin();
-      vertices.push(*n_visited_v);
-      std::get<0>(visited[*n_visited_v]) = Color::Blue; // first vertex is always blue
-      while (!vertices.empty()) {
-        auto top = vertices.top();
-        vertices.pop();
-        not_visited.erase(top);
- 
-        size_type edge_id = std::get<1>(visited[top]);
-        for (size_type curr_id = std::get<0>(table[2][edge_id]);
-             curr_id != edge_id; curr_id = std::get<0>(table[2][curr_id])) {
-          auto column = curr_id + get_edge_dir(curr_id);
-          if (!is_right_painted(top, std::get<1>(table[1][column]), visited, vertices)) {
-            return get_odd_length_cicle(visited, std::get<1>(table[1][column]), top);
-          }
+    for (size_type id = 0; id < nvertices_; ++id) {
+      auto top_id   = std::get<0>(table[2][id]);
+      auto top_vert = std::get<1>(table[1][top_id]);
+      if (std::get<0>(visited[top_vert]) == Color::Grey) {
+        std::get<0>(visited[top_vert]) = Color::Blue; // first vertex is always blue
+      }
+      size_type edge_id = std::get<1>(visited[top_vert]);
+      for (size_type curr_id = std::get<0>(table[2][edge_id]);
+           curr_id != edge_id; curr_id = std::get<0>(table[2][curr_id])) {
+        auto column = curr_id + get_edge_dir(curr_id);
+        if (!is_right_painted(top_vert, std::get<1>(table[1][column]), visited)) {
+          return get_odd_length_cicle(visited, std::get<1>(table[1][column]), top_vert);
         }
-      }    
+      }
     }
     // divide the vertices of the graph into two parts
     graph_bipartite_type two_fractions(2);
@@ -176,14 +169,13 @@ class Graph final {
   }
 
   bool is_right_painted(value_type top_vert, value_type neighbour_vert,
-                  painting_map &p_map, std::stack<value_type> &vertices) const {
+                        painting_map &p_map) const {
     auto draw_neighbour_vertex = [](Color own_color) {
       return own_color == Color::Blue ? Color::Red : Color::Blue;
     };
  
     if (std::get<0>(p_map[neighbour_vert]) == Color::Grey) {
       std::get<0>(p_map[neighbour_vert]) = draw_neighbour_vertex(std::get<0>(p_map[top_vert]));
-      vertices.push(neighbour_vert);
       // saving the coloring vertex 
       std::get<2>(p_map[neighbour_vert]) = top_vert;
     } else if (std::get<0>(p_map[neighbour_vert]) == std::get<0>(p_map[top_vert])) {
