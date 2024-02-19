@@ -116,7 +116,7 @@ class Graph final {
     }
   }
 
-  graph_bipartite_type is_bipartite() {
+  graph_bipartite_type is_bipartite() const {
     std::set<value_type> not_visited(cbegin(), cend());
     painting_map visited;
     std::transform(cbegin(), cend(), std::inserter(visited, visited.end()),
