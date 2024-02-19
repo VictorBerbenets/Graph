@@ -12,7 +12,7 @@
 namespace {
 
 template <typename T>
-void print_bipartite_graph(const yLAB::Graph<T> &gr) {
+void print_bipartite_graph(yLAB::Graph<T> &gr) {
   if (auto fractices = gr.is_bipartite(); fractices.size() == 2) {
     const auto &[fr1, fr2] = std::make_pair(fractices[0], fractices[1]);
     auto begin1 = fr1.begin(), begin2 = fr2.begin(),
@@ -56,8 +56,8 @@ int main() {
     load_data.push_back(load);
   }
 
-  yLAB::Graph<int, int, int> g(edges.begin(), edges.end(),
-                              load_data.begin(), load_data.end());
+  yLAB::Graph<int> g(edges.begin(), edges.end(),
+                    load_data.begin(), load_data.end());
   print_bipartite_graph(g);
 }
 

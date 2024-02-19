@@ -14,7 +14,6 @@
 #include <memory>
 #include <unordered_map>
 #include <set>
-#include <map>
 
 #include "iterator.hpp"
 
@@ -38,16 +37,14 @@ class Graph final {
   using vertex_type            = VertexLoad;
   using iterator               = GraphIterator<value_type, VertexLoad, EdgeLoad>;
   using const_iterator         = GraphIterator<value_type, VertexLoad, EdgeLoad>;
-  using reverse_iterator       = std::reverse_iterator<iterator>;
-  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
  private:
   static constexpr size_type NLine        = 5; // table lines
   static constexpr size_type EdgeAddition = 2; // every edge is stored in two cells
 
   class ProxyBracket;
 
-  using painting_map = std::map<value_type, std::tuple<Color, size_type,
-                                                       value_type>>;
+  using painting_map = std::unordered_map<value_type, std::tuple<Color, size_type,
+                                          value_type>>;
   using edge_load_pair       = std::pair<edge, edge_type>;
   using graph_bipartite_type = std::vector<std::vector<value_type>>;
  public:
@@ -65,7 +62,8 @@ class Graph final {
       : Graph(f_begin, f_end) {
     // adding a load to the edges
     for (auto load_id = nvertices_; i_begin != i_end; ++i_begin) {
-      (*this)[4][load_id++]. template emplace<3>(*i_begin); 
+      (*this)[4][load_id]. template emplace<3>(*i_begin);
+      load_id += 2;
     }
   }
 
@@ -83,11 +81,6 @@ class Graph final {
     }
     line_len_  = nvertices_ + nedges_ * EdgeAddition;
     data_.reserve(line_len_ * NLine);
-    
-    // filling part of the second line
-    for (size_type id = 0; id < nvertices_; ++id) {
-      (*this)[1][id]. template emplace<0>(0);
-    }
 
     // filling first line and part of the fourth
     for (size_type ident = 0; ident < line_len_; ++ident) {
@@ -111,37 +104,21 @@ class Graph final {
         ++curr_id;
       }
     }
-
+    // filling part of the second line
+    for (size_type id = 0; id < nvertices_; ++id) {
+      auto vert_id = std::get<0>((*this)[2][id]);
+      (*this)[1][id]. template emplace<1>(std::get<1>((*this)[1][vert_id]));
+    }
+    // filling part of the third line
     for (auto [vert, end_edge] : vertices) {
       auto vert_id = std::get<0>((*this)[2][end_edge]);
-      (*this)[3][vert_id]. template emplace<0>(end_edge);
+      std::get<0>((*this)[3][vert_id]) = end_edge;
     }
-#if 0
-    for (int i = 0; i < 4; ++i) {
-      for (int j = 0; j < line_len_; ++j) {
-        if (i != 1) {
-          std::cout << std::get<0>((*this)[i][j]) << ' ';
-          if (std::get<0>((*this)[i][j]) < 10) std::cout << ' ';
-        } else {
-          if (j < nvertices_) {
-            std::cout << std::get<0>((*this)[i][j]) << ' ';
-            if (std::get<0>((*this)[i][j]) < 10) std::cout << ' ';
-          }
-          else {
-            std::cout << std::get<1>((*this)[i][j]) << ' ';
-            if (std::get<1>((*this)[i][j]) < 10) std::cout << ' ';
-          }
-        }
-      }
-      std::cout << std::endl;
-    }
-      std::cout << std::endl;
-#endif
   }
 
-  graph_bipartite_type is_bipartite() const {
-    painting_map visited;
+  graph_bipartite_type is_bipartite() {
     std::set<value_type> not_visited(cbegin(), cend());
+    painting_map visited;
     std::transform(cbegin(), cend(), std::inserter(visited, visited.end()),
                    [id = 0](auto &&key) mutable {
                      return std::make_pair(key, std::make_tuple(Color::Grey, id++,
@@ -177,231 +154,26 @@ class Graph final {
  
     return two_fractions;
   }
-#if 0
-  edges_load::iterator set_edge_load(const edge_type& edge,
-                                     const edge_type &load) {
-    if (auto it = edge_load(edge); it != e_load_.end()) {
-      it->second.second = load;
-      return it;
-    }
-    return e_load_.end();
-  }
 
-  edges_load::iterator set_edge_load(const edge_type& edge,
-                                     edge_type &&load) {
-    if (auto it = edge_load(edge); it != e_load_.end()) {
-      it->second.second = std::move(load);
-      return it;
-    }
-    return e_load_.end();
-
-  }
-
-  edges_load::iterator set_vertex_load(value_type vertex,
-                                       const vertex_type &load) {
-    if (auto it = vertex_load(vertex); it != v_load_.end()) {
-      it->second = load;
-    }
-    return v_load_.end();
-  }
-
-  edges_load::iterator set_vertex_load(value_type vertex,
-                                       vertex_type &&load) {
-    if (auto it = vertex_load(vertex); it != v_load_.end()) {
-      it->second = std::move(load);
-    }
-    return v_load_.end();
-  }
-
-  vertices_load::iterator vertex_load(value_type vertex) {
-    return v_load_.find(vertex);
-  }
-
-  vertices_load::const_iterator vertex_load(value_type vertex) const {
-    return v_load_.find(vertex);
-  }
-
-  edges_load::const_iterator edge_load(const edge_type &edge) const {
-    return find_edge(edge);
-  }
-
-  edges_load::iterator edge_load(const edge_type &edge) {
-    auto edge_it = find_edge(edge);
-    return e_load_.erase(edge_it, edge_it); // Howard Hinnant trick
-  }
-
-  std::pair<typename edges_load::iterator, bool>
-  insert_edge(const edge_type &edge) {
-    if (auto it = edge_load(edge); it != e_load_.cend()) {
-      return {it, false};
-    }
-
-    insert_edge_impl(edge);
-    return {e_load_.emplace(edge.first, std::make_pair(edge.second,
-                           EdgeLoad())), true};
-  }
-
-  std::pair<typename edges_load::iterator, bool>
-  insert_edge(const edge_type &edge, const edge_type &load) {
-    if (auto it = edge_load(edge); it != e_load_.cend()) {
-      return {it, false};
-    }
-
-    insert_edge_impl(edge);
-    return {e_load_.emplace(edge.first, std::make_pair(edge.second, load)),
-            true};
-  }
-
-  std::pair<typename edges_load::iterator, bool>
-  insert_edge(const edge_type &edge, edge_type &&load) {
-    if (auto it = edge_load(edge); it != e_load_.cend()) {
-      return {it, false};
-    }
-
-    insert_edge_impl(edge);
-    return {e_load_.emplace(edge.first,
-                            std::make_pair(edge.second, std::move(load))), true};
-  }
-
-  template <typename... Args>
-  std::pair<typename edges_load::iterator, bool>
-  insert_edge(const edge_type &edge, Args&&... args) {
-    if (auto it = edge_load(edge); it != e_load_.cend()) {
-      return {it, false};
-    }
-
-    insert_edge_impl(edge);
-    return {e_load_.emplace(edge.first, std::make_pair(edge.second,
-                                        std::forward<Args>(args)...)), true};
-  }
-
-  template <typename Iter>
-  requires std::input_iterator<Iter> &&
-           detail::validEdgeType <typename std::iterator_traits<Iter>::value_type,
-                                  value_type>
-  void insert_edge(Iter begin, Iter end) {
-    for (; begin != end; ++begin) {
-      insert_edge(*begin);
-    }
-  }
-
-  void insert_edge(std::initializer_list<edge_type> ls) {
-    insert_edge(ls.begin(), ls.end());
-  }
-#endif
   size_type v_size() const noexcept { return nvertices_; }
   size_type e_size() const noexcept { return nedges_; }
 
   // psevdo iterators which walks on vertices
-  constexpr iterator begin() noexcept { return std::addressof(data_[line_len_]); }
-  constexpr iterator end()   noexcept { return begin() + nvertices_; }
-  constexpr const_iterator begin() const noexcept { return const_cast<table_type*>(std::addressof(data_[line_len_])); }
-  constexpr const_iterator end()   const noexcept { return begin() + nvertices_; }
-  constexpr const_iterator cbegin() const noexcept { return const_cast<table_type*>(std::addressof(data_[line_len_])); }
-  constexpr const_iterator cend()   const noexcept { return cbegin() + nvertices_; }
+  iterator begin() noexcept { return std::addressof(data_[line_len_]); }
+  iterator end()   noexcept { return begin() + nvertices_; }
+  const_iterator begin() const noexcept { return const_cast<table_type*>(std::addressof(data_[line_len_])); }
+  const_iterator end()   const noexcept { return begin() + nvertices_; }
+  const_iterator cbegin() const noexcept { return const_cast<table_type*>(std::addressof(data_[line_len_])); }
+  const_iterator cend()   const noexcept { return cbegin() + nvertices_; }
  private:
 
-  constexpr ProxyBracket operator[] (size_type nline) {
+  ProxyBracket operator[] (size_type nline) {
     return ProxyBracket(std::addressof(data_[nline * line_len_]));
   }
 
-  constexpr const ProxyBracket operator[] (size_type nline) const {
+  const ProxyBracket operator[] (size_type nline) const {
     return ProxyBracket(std::addressof(const_cast<reference>(data_[nline * line_len_])));
   }
-
-#if 0
-  void insert_edge_impl(const edge_type &edge) {
-    auto [v1, v2] = edge;
-    std::vector verts {std::pair{v1, 1}, std::pair{v2, 2}};
-    std::erase_if(verts, [&v_table = v_load_](auto &&p) {
-      return v_table.find(p.first) != v_table.end();
-    });
-
-    auto old_table    = std::move(table_);
-    table_.nedges_    = old_table.nedges_ + 1;
-    table_.nvertices_ = old_table.nvertices_ + verts.size();
-    table_.line_len_  = table_.nvertices_ + table_.nedges_ * 2;
-
-    auto &new_data = table_.data_;
-    new_data.reserve(table_.line_len_ * 4);
-    //filling first line
-    std::iota(new_data.begin(), new_data.begin() + table_.line_len_,
-              value_type {0});
-
-    if (verts.empty()) { // if vertices have already met in the table
-      // copying the second, third and fourth lines
-      for (auto id : {1, 2, 3}) {
-        std::copy(std::addressof(old_table[id][0]),
-                  std::addressof(old_table[id][old_table.line_len_]),
-                  std::addressof(table_[id][0]));
-      }
-      // rebalancing edges positions
-      replace_edges(v1, 1);
-      replace_edges(v2, 2);
-    } else { // if we have new vertices
-      for (auto pair : verts) {
-        v_load_[pair.first];
-      }
-      // copying old vertices to the second line
-      std::copy(old_table.begin(), old_table.end(), table_.begin());
-      // copying edges vertices to the second line
-      std::copy(std::addressof(old_table[1][old_table.nvertices_]),
-                std::addressof(old_table[1][old_table.line_len_]),
-                std::addressof(table_[1][table_.nvertices_]));
-      // because of the new vertices we need copy + increment old edges positions
-      auto increment_copy = [] (auto first, auto last, auto d_first,
-                               size_type inc_value, size_type limit) mutable {
-        std::transform(first, last, d_first,
-                       [inc_value, limit] (auto &&val) -> size_type {
-          if (static_cast<size_type>(val) < limit) { return val; }
-          return val + inc_value;
-        });
-      };
-
-      auto verts_sz = verts.size();
-      auto limit    = old_table.nvertices_;
-      // filling third and fouth lines
-      for (auto line_id : {2, 3}) {
-        increment_copy(std::addressof(old_table[line_id][0]),
-                       std::addressof(old_table[line_id][old_table.nvertices_]),
-                       std::addressof(table_[line_id][0]), verts_sz, limit);
-
-        increment_copy(std::addressof(old_table[line_id][old_table.nvertices_]),
-                       std::addressof(old_table[line_id][old_table.line_len_]),
-                       std::addressof(table_[line_id][table_.nvertices_]),
-                       verts_sz, limit);
-      }
-      // setting next and prev edges for each new vertex
-      for (auto new_id = old_table.nvertices_; auto [vertex, order] : verts) {
-        auto offset = order == 1 ? table_.line_len_ - 2 : table_.line_len_ - 1;
-
-        table_[1][new_id] = table_[1][offset] = vertex;
-        table_[2][new_id] = table_[3][new_id] = offset;
-        table_[2][offset] = table_[3][offset] = new_id;
-        ++new_id;
-      }
-
-      std::vector tmp_stor {std::pair{v1, 1}, std::pair{v2, 2}};
-      for (auto &&[v, diff] : tmp_stor) {
-        if (std::find_if(verts.begin(), verts.end(),
-            [v] (auto &&pair) { return pair.first == v; }) == verts.end()) {
-          replace_edges(v, diff);
-        }
-      }
-    }
-  }
-
-  void replace_edges(const value_type &v, size_type diff) {
-    auto it = std::find(table_.begin(), table_.end(), v);
-
-    auto old_last = table_[3][*(it - table_.line_len_)];
-    auto id = diff == 1 ? table_.line_len_ - 2 :
-                          table_.line_len_ - 1;
-    table_[2][id] = std::exchange(table_[2][old_last], id);
-    table_[3][id] = old_last;
-    table_[1][id] = v;
-  }
-#endif
 
   bool is_right_painted(value_type top_vert, value_type neighbour_vert,
                   painting_map &p_map, std::stack<value_type> &vertices) const {
@@ -444,18 +216,21 @@ class Graph final {
     }
     return std::get<3>(*this[line][column]);
   }
-
-  template <std::forward_iterator Iter>
-  constexpr void fill(Iter begin, Iter end) {
-  }
-  
-  size_type find_vert_id(const table_type &var) const {
-    auto vert_iter = std::lower_bound(cbegin(), cend(), std::get<1>(var));
-    return std::get<0>(*(vert_iter.ptr_ - line_len_));
+ 
+  size_type find_vert_id(value_type vertex) const {
+    size_type counter = 0;
+    auto vert_iter    = std::find(begin(), end(), [vertex, &counter](auto &&val) {
+                                 if (vertex == val) { return true; }
+                                 ++counter;
+                               });
+    if (vert_iter == end()) {
+      return std::string::npos;
+    }
+    return counter;
   }
 
   std::pair<size_type, size_type>
-  find_edge_id(const edge_type &edge) const {
+  find_edge_id(const edge &edge) const {
     auto &[v1, v2] = edge;
     auto end_edge  = find_vert_id(v1);
     for (auto curr_edge = std::get<0>(*this[2][end_edge]);
