@@ -51,9 +51,7 @@ public:
     }
 
     const_reference operator*() const noexcept { return std::get<1>(*ptr_); }
-    reference operator*() noexcept { return std::get<1>(*ptr_); }
     const value_type* operator->() const noexcept { return std::addressof(std::get<1>(*ptr_)); }
-    value_type* operator->() noexcept { return std::addressof(std::get<1>(*ptr_)); }
  
     auto operator<=>(const GraphIterator &rhs) const = default;
     
@@ -63,9 +61,9 @@ public:
 
     template <std::integral, typename, typename> friend class Graph;
 private:
-    pointer ptr_;
+    const_pointer ptr_;
 
-    GraphIterator(pointer ptr)
+    GraphIterator(const_pointer ptr)
     : ptr_ {ptr} {}
 }; // <--- class GraphIterator
 

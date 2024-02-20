@@ -34,7 +34,7 @@ class Graph final {
   using edge_type              = EdgeLoad;
   using vertex_type            = VertexLoad;
   using iterator               = GraphIterator<value_type, VertexLoad, EdgeLoad>;
-  using const_iterator         = GraphIterator<value_type, VertexLoad, EdgeLoad>;
+  using const_iterator         = iterator;
  private:
   static constexpr size_type NLine        = 5; // table lines
   static constexpr size_type EdgeAddition = 2; // every edge is stored in two cells
@@ -71,7 +71,7 @@ class Graph final {
     std::unordered_map<vertex_type, size_type> vertices;
     // counting unique vertices
     for (auto curr_iter = begin; curr_iter != end; ++curr_iter, ++nedges_) {
-      for (auto vertex : {curr_iter->first, curr_iter->second}) {
+      for (auto &&vertex : {curr_iter->first, curr_iter->second}) {
         if (vertices.find(vertex) == vertices.end()) {
           vertices.insert({vertex, nvertices_++});
         }
@@ -108,7 +108,7 @@ class Graph final {
       (*this)[1][id]. template emplace<1>(std::get<1>((*this)[1][vert_id]));
     }
     // filling part of the third line
-    for (auto [vert, end_edge] : vertices) {
+    for (auto &&[vert, end_edge] : vertices) {
       auto vert_id = std::get<0>((*this)[2][end_edge]);
       std::get<0>((*this)[3][vert_id]) = end_edge;
     }
@@ -119,7 +119,7 @@ class Graph final {
     std::transform(cbegin(), cend(), std::inserter(visited, visited.end()),
                    [id = 0](auto &&key) mutable {
                      return std::make_pair(key, std::make_tuple(Color::Grey, id++,
-                                           value_type {0}));
+                                                                value_type {0}));
                    });
 
     auto &table = *this;
@@ -140,7 +140,7 @@ class Graph final {
     }
     // divide the vertices of the graph into two parts
     graph_bipartite_type two_fractions(2);
-    for (auto vert : table) {
+    for (auto &&vert : table) {
       std::get<0>(visited[vert]) == Color::Blue ? two_fractions[0].push_back(vert) :
                                                   two_fractions[1].push_back(vert); 
     }
@@ -154,9 +154,9 @@ class Graph final {
   // psevdo iterators which walks on vertices
   iterator begin() noexcept { return std::addressof(data_[line_len_]); }
   iterator end()   noexcept { return begin() + nvertices_; }
-  const_iterator begin() const noexcept { return const_cast<table_type*>(std::addressof(data_[line_len_])); }
+  const_iterator begin() const noexcept { return std::addressof(data_[line_len_]); }
   const_iterator end()   const noexcept { return begin() + nvertices_; }
-  const_iterator cbegin() const noexcept { return const_cast<table_type*>(std::addressof(data_[line_len_])); }
+  const_iterator cbegin() const noexcept { return std::addressof(data_[line_len_]); }
   const_iterator cend()   const noexcept { return cbegin() + nvertices_; }
  private:
 
@@ -243,14 +243,14 @@ class Graph final {
   
   class ProxyBracket final {
    public:
-    constexpr ProxyBracket(pointer ptr) noexcept
+    ProxyBracket(pointer ptr) noexcept
         : line_ptr_ {ptr} {}
     
-    constexpr reference operator[](size_type ncolumn) {
+    reference operator[](size_type ncolumn) {
       return line_ptr_[ncolumn];
     }
 
-    constexpr const_reference operator[](size_type ncolumn) const {
+    const_reference operator[](size_type ncolumn) const {
       return line_ptr_[ncolumn];
     }
    private:
