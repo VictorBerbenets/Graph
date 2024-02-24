@@ -40,7 +40,8 @@ class Graph final {
   static constexpr size_type EdgeAddition = 2; // every edge is stored in two cells
 
   class ProxyBracket;
-
+  
+  using helper_map   = std::unordered_map<vertex_type, size_type>;
   using painting_map = std::unordered_map<value_type, std::tuple<Color, size_type,
                                           value_type>>;
   using edge_load_pair       = std::pair<edge, edge_type>;
@@ -68,51 +69,12 @@ class Graph final {
   template <std::forward_iterator Iter>
   requires requires (Iter it) { {*it} -> std::convertible_to<edge>;}
   Graph(Iter begin, Iter end) {
-    std::unordered_map<vertex_type, size_type> vertices;
-    // counting unique vertices
-    for (auto curr_iter = begin; curr_iter != end; ++curr_iter, ++nedges_) {
-      for (auto &&vertex : {curr_iter->first, curr_iter->second}) {
-        if (vertices.find(vertex) == vertices.end()) {
-          vertices.insert({vertex, nvertices_++});
-        }
-      }
-    }
-    line_len_  = nvertices_ + nedges_ * EdgeAddition;
-    data_.reserve(line_len_ * NLine);
+    helper_map vertices;
 
-    // filling first line and part of the fourth
-    for (size_type ident = 0; ident < line_len_; ++ident) {
-      emplace<0>(ident, ident);
-      if (ident < nvertices_) {
-        emplace<2>(ident, ident);
-        emplace<3>(ident, ident);
-      }
-    }
-    // filling another part of second line
-    for (size_type curr_id = nvertices_; begin != end;
-         ++begin) {
-      for (auto vertex : {begin->first, begin->second}) {
-        emplace<1>(curr_id, vertex);
-        
-        auto vert_id = vertices[vertex];
-        emplace<2>(curr_id, get<2>(vert_id));
-        emplace<2>(vert_id, curr_id);
-        emplace<3>(curr_id, vert_id);
-
-        vertices[vertex] = curr_id;
-        ++curr_id;
-      }
-    }
-    // filling part of the second line
-    for (size_type id = 0; id < nvertices_; ++id) {
-      auto vert_id = get<2>(id);
-      emplace<1>(id, get<1>(vert_id));
-    }
-    // filling part of the third line
-    for (auto &&[vert, end_edge] : vertices) {
-      auto vert_id = get<2>(end_edge);
-      get<3>(vert_id) = end_edge;
-    }
+    set_table_sizes(begin, end, vertices); 
+    fill_with_trivial_data();
+    set_edges_info(begin, end, vertices);
+    set_vertex_info();
   }
 
   graph_bipartite_type is_bipartite() const {
@@ -167,6 +129,59 @@ class Graph final {
 
   const ProxyBracket operator[] (size_type nline) const {
     return ProxyBracket(std::addressof(const_cast<reference>(data_[nline * line_len_])));
+  }
+  
+  template <std::forward_iterator FIter>
+  void set_table_sizes(FIter begin, FIter end, helper_map &vertices) {
+    // counting unique vertices
+    for (auto curr_iter = begin; curr_iter != end; ++curr_iter, ++nedges_) {
+      for (auto &&vertex : {curr_iter->first, curr_iter->second}) {
+        if (vertices.find(vertex) == vertices.end()) {
+          vertices.insert({vertex, nvertices_++});
+        }
+      }
+    }
+    line_len_  = nvertices_ + nedges_ * EdgeAddition;
+    data_.reserve(line_len_ * NLine);
+  }
+    
+  void fill_with_trivial_data() {
+    for (size_type ident = 0; ident < line_len_; ++ident) {
+      emplace<0>(ident, ident);
+      if (ident < nvertices_) {
+        emplace<2>(ident, ident);
+        emplace<3>(ident, ident);
+      }
+    }
+  }
+  
+  template <std::forward_iterator FIter>
+  void set_edges_info(FIter begin, FIter end, helper_map &vertices) {
+    for (size_type curr_id = nvertices_; begin != end;
+         ++begin) {
+      for (auto vertex : {begin->first, begin->second}) {
+        emplace<1>(curr_id, vertex);
+        
+        auto vert_id = vertices[vertex];
+        emplace<2>(curr_id, get<2>(vert_id));
+        emplace<2>(vert_id, curr_id);
+        emplace<3>(curr_id, vert_id);
+
+        vertices[vertex] = curr_id;
+        ++curr_id;
+      }
+    }
+    for (auto &&[vert, end_edge] : vertices) {
+      auto vert_id = get<2>(end_edge);
+      get<3>(vert_id) = end_edge;
+    }
+  }
+
+  void set_vertex_info() {
+    for (size_type id = 0; id < nvertices_; ++id) {
+      auto vert_id = get<2>(id);
+      emplace<1>(id, get<1>(vert_id));
+    }
   }
   
   // filling a table depending on the type
@@ -264,7 +279,7 @@ class Graph final {
   size_type nedges_    = 0;
   size_type nvertices_ = 0;
   size_type line_len_  = 0;
-  std::vector<table_type> data_;
+  std::vector<table_type> data_; // table NLine * line_len_
   
   class ProxyBracket final {
    public:
