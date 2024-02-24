@@ -60,7 +60,7 @@ class Graph final {
       : Graph(f_begin, f_end) {
     // adding a load to the edges
     for (auto load_id = nvertices_; i_begin != i_end; ++i_begin) {
-      (*this)[4][load_id]. template emplace<3>(*i_begin);
+      emplace<4>(load_id, *i_begin);
       load_id += 2;
     }
   }
@@ -82,35 +82,36 @@ class Graph final {
 
     // filling first line and part of the fourth
     for (size_type ident = 0; ident < line_len_; ++ident) {
-      (*this)[0][ident]. template emplace<0>(ident);
+      emplace<0>(ident, ident);
       if (ident < nvertices_) {
-        (*this)[2][ident]. template emplace<0>(ident);
-        (*this)[3][ident]. template emplace<0>(ident);
+        emplace<2>(ident, ident);
+        emplace<3>(ident, ident);
       }
     }
     // filling another part of second line
     for (size_type curr_id = nvertices_; begin != end;
          ++begin) {
       for (auto vertex : {begin->first, begin->second}) {
-        (*this)[1][curr_id]. template emplace<1>(vertex);
+        emplace<1>(curr_id, vertex);
         
         auto vert_id = vertices[vertex];
-        (*this)[2][curr_id]. template emplace<0>(std::get<0>((*this)[2][vert_id]));
-        (*this)[2][vert_id]. template emplace<0>(curr_id);
-        (*this)[3][curr_id]. template emplace<0>(vert_id);
+        emplace<2>(curr_id, get<2>(vert_id));
+        emplace<2>(vert_id, curr_id);
+        emplace<3>(curr_id, vert_id);
+
         vertices[vertex] = curr_id;
         ++curr_id;
       }
     }
     // filling part of the second line
     for (size_type id = 0; id < nvertices_; ++id) {
-      auto vert_id = std::get<0>((*this)[2][id]);
-      (*this)[1][id]. template emplace<1>(std::get<1>((*this)[1][vert_id]));
+      auto vert_id = get<2>(id);
+      emplace<1>(id, get<1>(vert_id));
     }
     // filling part of the third line
     for (auto &&[vert, end_edge] : vertices) {
-      auto vert_id = std::get<0>((*this)[2][end_edge]);
-      std::get<0>((*this)[3][vert_id]) = end_edge;
+      auto vert_id = get<2>(end_edge);
+      get<3>(vert_id) = end_edge;
     }
   }
 
@@ -167,6 +168,38 @@ class Graph final {
   const ProxyBracket operator[] (size_type nline) const {
     return ProxyBracket(std::addressof(const_cast<reference>(data_[nline * line_len_])));
   }
+  
+  // filling a table depending on the type
+  template <size_type LineId, typename U>
+  void emplace(size_type column, U&& value) {
+    if constexpr (LineId != 1 && LineId != 4) {
+      (*this)[LineId][column]. template emplace<0>(std::forward<U>(value));
+    } else if (LineId == 1) {
+      (*this)[LineId][column]. template emplace<1>(std::forward<U>(value));
+    } else {
+      if (column < nvertices_) {
+        (*this)[LineId][column]. template emplace<2>(std::forward<U>(value));
+      } else {
+        (*this)[LineId][column]. template emplace<3>(std::forward<U>(value));
+      }
+    }
+  }
+  
+  // getting table value
+  template <size_type LineId>
+  auto &get(size_type column) {
+    if constexpr (LineId != 1 && LineId != 4) {
+      return std::get<0>((*this)[LineId][column]);
+    } else if (LineId == 1) {
+      return std::get<1>((*this)[LineId][column]);
+    } else {
+      if (column < nvertices_) {
+        return std::get<2>((*this)[LineId][column]);
+      } else {
+        return std::get<3>((*this)[LineId][column]);
+      }
+    }
+  }
 
   bool is_right_painted(value_type top_vert, value_type neighbour_vert,
                         painting_map &p_map) const {
@@ -201,14 +234,6 @@ class Graph final {
     return edge_number % 2 == nvertices_ % 2 ? 1 : -1;
   }
 
-  std::optional<edge_type> find_edge(const edge_type &edge) const {
-    auto [line, column] = find_edge_id(edge);
-    if (line == 0 && column == 0) {
-      return std::nullopt;
-    }
-    return std::get<3>(*this[line][column]);
-  }
- 
   size_type find_vert_id(value_type vertex) const {
     size_type counter = 0;
     auto vert_iter    = std::find(begin(), end(), [vertex, &counter](auto &&val) {
@@ -225,8 +250,8 @@ class Graph final {
   find_edge_id(const edge &edge) const {
     auto &[v1, v2] = edge;
     auto end_edge  = find_vert_id(v1);
-    for (auto curr_edge = std::get<0>(*this[2][end_edge]);
-           curr_edge != end_edge; curr_edge = std::get<0>(*this[2][curr_edge])) {
+    for (auto curr_edge = get<2>(end_edge);
+           curr_edge != end_edge; curr_edge = get<2>(curr_edge)) {
       auto column = curr_edge + get_edge_dir(curr_edge);
       if (*this[1][column] == v2) {
         return {curr_edge, column};
