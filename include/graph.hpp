@@ -42,8 +42,7 @@ class Graph final {
   class ProxyBracket;
   
   using helper_map   = std::unordered_map<vertex_type, size_type>;
-  using painting_map = std::unordered_map<value_type, std::tuple<Color, size_type,
-                                          value_type>>;
+  using painting_map = std::unordered_map<value_type, std::pair<Color, value_type>>;
   using edge_load_pair       = std::pair<edge, edge_type>;
   using graph_bipartite_type = std::vector<std::vector<value_type>>;
  public:
@@ -81,8 +80,8 @@ class Graph final {
     painting_map visited;
     std::transform(cbegin(), cend(), std::inserter(visited, visited.end()),
                    [id = 0](auto &&key) mutable {
-                     return std::make_pair(key, std::make_tuple(Color::Grey, id++,
-                                                                value_type {0}));
+                     return std::make_pair(key, std::make_pair(Color::Grey,
+                                                               value_type {0}));
                    });
 
     auto &table = *this;
@@ -90,11 +89,10 @@ class Graph final {
       auto top_id   = std::get<0>(table[2][id]);
       auto top_vert = std::get<1>(table[1][top_id]);
       if (std::get<0>(visited[top_vert]) == Color::Grey) {
-        std::get<0>(visited[top_vert]) = Color::Blue; // first vertex is always blue
+        visited[top_vert].first = Color::Blue; // first vertex is always blue
       }
-      size_type edge_id = std::get<1>(visited[top_vert]);
-      for (size_type curr_id = std::get<0>(table[2][edge_id]);
-           curr_id != edge_id; curr_id = std::get<0>(table[2][curr_id])) {
+      for (size_type curr_id = std::get<0>(table[2][id]);
+           curr_id != id; curr_id = std::get<0>(table[2][curr_id])) {
         auto column = curr_id + get_edge_dir(curr_id);
         if (!is_right_painted(top_vert, std::get<1>(table[1][column]), visited)) {
           return get_odd_length_cicle(visited, std::get<1>(table[1][column]), top_vert);
@@ -104,8 +102,8 @@ class Graph final {
     // divide the vertices of the graph into two parts
     graph_bipartite_type two_fractions(2);
     for (auto &&vert : table) {
-      std::get<0>(visited[vert]) == Color::Blue ? two_fractions[0].push_back(vert) :
-                                                  two_fractions[1].push_back(vert); 
+      visited[vert].first == Color::Blue ? two_fractions[0].push_back(vert) :
+                                           two_fractions[1].push_back(vert); 
     }
  
     return two_fractions;
@@ -199,10 +197,21 @@ class Graph final {
       }
     }
   }
-  
+ 
   // getting table value
   template <size_type LineId>
   auto &get(size_type column) {
+    auto &get_ref = get_impl<LineId>(column);
+    return const_cast<std::remove_cvref_t<decltype(get_ref)>&>(get_ref);
+  }
+
+  template <size_type LineId>
+  const auto &get(size_type column) const {
+    return get_impl<LineId>(column);
+  }
+
+  template <size_type LineId>
+  const auto &get_impl(size_type column) const {
     if constexpr (LineId != 1 && LineId != 4) {
       return std::get<0>((*this)[LineId][column]);
     } else if (LineId == 1) {
@@ -222,11 +231,11 @@ class Graph final {
       return own_color == Color::Blue ? Color::Red : Color::Blue;
     };
  
-    if (std::get<0>(p_map[neighbour_vert]) == Color::Grey) {
-      std::get<0>(p_map[neighbour_vert]) = draw_neighbour_vertex(std::get<0>(p_map[top_vert]));
+    if (p_map[neighbour_vert].first == Color::Grey) {
+      p_map[neighbour_vert].first = draw_neighbour_vertex(p_map[top_vert].first);
       // saving the coloring vertex 
-      std::get<2>(p_map[neighbour_vert]) = top_vert;
-    } else if (std::get<0>(p_map[neighbour_vert]) == std::get<0>(p_map[top_vert])) {
+      p_map[neighbour_vert].second = top_vert;
+    } else if (p_map[neighbour_vert].first == p_map[top_vert].first) {
       return false;
     }
     return true;
@@ -236,8 +245,8 @@ class Graph final {
                                             value_type failed_edge,
                                             value_type curr_edge) const {
     graph_bipartite_type odd_length_cicle(1, {failed_edge}); 
-    for (auto end_edge = std::get<2>(p_map[failed_edge]);
-         curr_edge != end_edge; curr_edge = std::get<2>(p_map[curr_edge])) {
+    for (auto end_edge = p_map[failed_edge].second;
+         curr_edge != end_edge; curr_edge = p_map[curr_edge].second) {
       odd_length_cicle[0].push_back(curr_edge); 
     }
     odd_length_cicle[0].push_back(curr_edge); 
