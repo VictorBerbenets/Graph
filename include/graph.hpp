@@ -86,16 +86,16 @@ class Graph final {
 
     auto &table = *this;
     for (size_type id = 0; id < nvertices_; ++id) {
-      auto top_id   = std::get<0>(table[2][id]);
-      auto top_vert = std::get<1>(table[1][top_id]);
-      if (std::get<0>(visited[top_vert]) == Color::Grey) {
+      auto top_id   = get<0>(id);
+      auto top_vert = get<1>(top_id);
+      if (visited[top_vert].first == Color::Grey) {
         visited[top_vert].first = Color::Blue; // first vertex is always blue
       }
-      for (size_type curr_id = std::get<0>(table[2][id]);
-           curr_id != id; curr_id = std::get<0>(table[2][curr_id])) {
+      for (size_type curr_id = get<2>(id);
+           curr_id != id; curr_id = get<2>(curr_id)) {
         auto column = curr_id + get_edge_dir(curr_id);
-        if (!is_right_painted(top_vert, std::get<1>(table[1][column]), visited)) {
-          return get_odd_length_cicle(visited, std::get<1>(table[1][column]), top_vert);
+        if (!is_right_painted(top_vert, get<1>(column), visited)) {
+          return get_odd_length_cicle(visited, get<1>(column), top_vert);
         }
       }
     }
