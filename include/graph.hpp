@@ -43,7 +43,7 @@ class Graph final {
   struct BipartiteVertexService;
 
   using helper_map           = std::unordered_map<vertex_type, size_type>;
-  using serviceBipartiteLoad = std::vector<BipartiteVertexService>;
+  using serviceBipartiteData = std::vector<BipartiteVertexService>;
   using edge_load_pair       = std::pair<edge, edge_type>;
   using graph_bipartite_type = std::vector<std::vector<value_type>>;
  public:
@@ -75,45 +75,19 @@ class Graph final {
     fill_with_trivial_data();
     set_edges_info(begin, end, vertices);
     set_vertex_info();
-#if 0
-    std::cout << __LINE__ << std::endl;
-
-    for (int i = 0; i < 4; ++i) {
-      for (int j = 0; j < line_len_; ++j) {
-        if (i == 0) {
-          std::cout << get<0>(j) << ' ';
-          if (get<0>(j) < 10) std::cout << ' ';
-        }
-        if (i == 1) {
-          std::cout << get<1>(j) << ' ';
-          if (get<1>(j) < 10) std::cout << ' ';
-        }
-        if (i == 2) {
-          std::cout << get<2>(j) << ' ';
-          if (get<2>(j) < 10) std::cout << ' ';
-        }
-        if (i == 3) {
-          std::cout << get<3>(j) << ' ';
-          if (get<3>(j) < 10) std::cout << ' ';
-        }
-      }
-      std::cout << std::endl;
-    }
-#endif
   }
 
   graph_bipartite_type is_bipartite() const {
-    serviceBipartiteLoad v_serv(nvertices_, {Color::Grey, 0});
+    serviceBipartiteData service_data(nvertices_, {Color::Grey, 0});
 
     for (size_type id = 0; id < nvertices_; ++id) {
-      if (v_serv[id].color_ == Color::Grey) {
-        v_serv[id].color_ = Color::Blue; // first vertex is always blue
+      if (service_data[id].color_ == Color::Grey) {
+        service_data[id].color_ = Color::Blue; // first vertex is always blue
       }
-      for (size_type curr_id = get<2>(id); curr_id != id;
-                                           curr_id = get<2>(curr_id)) {
+      for (auto curr_id = get<2>(id); curr_id != id; curr_id = get<2>(curr_id)) {
         auto column = curr_id + get_edge_dir(curr_id);
-        if (!is_right_painted(id, get<3>(column), v_serv)) {
-          return get_odd_length_cicle(v_serv, get<3>(column), id);
+        if (!is_right_painted(id, get<3>(column), service_data)) {
+          return get_odd_length_cicle(service_data, get<3>(column), id);
         }
       }
     }
@@ -121,8 +95,8 @@ class Graph final {
     graph_bipartite_type two_fractions(2);
     for (size_type id = 0; id < nvertices_; id++) {
       auto vert = get<1>(id);
-      v_serv[id].color_ == Color::Blue ? two_fractions[0].push_back(vert) :
-                                         two_fractions[1].push_back(vert); 
+      service_data[id].color_ == Color::Blue ? two_fractions[0].push_back(vert) :
+                                               two_fractions[1].push_back(vert); 
     }
  
     return two_fractions;
@@ -252,27 +226,27 @@ class Graph final {
   }
  
   bool is_right_painted(size_type top_vert, size_type neighbour_vert,
-                        serviceBipartiteLoad &v_serv) const {
+                        serviceBipartiteData &service_data) const {
     auto draw_neighbour_vertex = [](Color own_color) {
       return own_color == Color::Blue ? Color::Red : Color::Blue;
     };
  
-    if (v_serv[neighbour_vert].color_ == Color::Grey) {
-      v_serv[neighbour_vert].color_ = draw_neighbour_vertex(v_serv[top_vert].color_);
+    if (service_data[neighbour_vert].color_ == Color::Grey) {
+      service_data[neighbour_vert].color_ = draw_neighbour_vertex(service_data[top_vert].color_);
       // saving the coloring vertex 
-      v_serv[neighbour_vert].parent_ = top_vert;
-    } else if (v_serv[neighbour_vert].color_ == v_serv[top_vert].color_) {
+      service_data[neighbour_vert].parent_ = top_vert;
+    } else if (service_data[neighbour_vert].color_ == service_data[top_vert].color_) {
       return false;
     }
     return true;
   }
 
-  graph_bipartite_type get_odd_length_cicle(serviceBipartiteLoad &v_serv,
+  graph_bipartite_type get_odd_length_cicle(serviceBipartiteData &service_data,
                                             size_type failed_edge,
                                             size_type curr_edge) const {
     graph_bipartite_type odd_length_cicle(1, {get<1>(failed_edge)}); 
-    for (auto end_edge = v_serv[failed_edge].parent_;
-         curr_edge != end_edge; curr_edge = v_serv[curr_edge].parent_) {
+    for (auto end_edge = service_data[failed_edge].parent_;
+         curr_edge != end_edge; curr_edge = service_data[curr_edge].parent_) {
       odd_length_cicle[0].push_back(get<1>(curr_edge));
     }
     odd_length_cicle[0].push_back(get<1>(curr_edge));
