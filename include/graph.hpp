@@ -40,9 +40,10 @@ class Graph final {
   static constexpr size_type EdgeAddition = 2; // every edge is stored in two cells
 
   class ProxyBracket;
-  
-  using helper_map   = std::unordered_map<vertex_type, size_type>;
-  using painting_map = std::unordered_map<value_type, std::pair<Color, value_type>>;
+  struct BipartiteVertexService;
+
+  using helper_map           = std::unordered_map<vertex_type, size_type>;
+  using serviceBipartiteLoad = std::vector<BipartiteVertexService>;
   using edge_load_pair       = std::pair<edge, edge_type>;
   using graph_bipartite_type = std::vector<std::vector<value_type>>;
  public:
@@ -74,36 +75,54 @@ class Graph final {
     fill_with_trivial_data();
     set_edges_info(begin, end, vertices);
     set_vertex_info();
+#if 0
+    std::cout << __LINE__ << std::endl;
+
+    for (int i = 0; i < 4; ++i) {
+      for (int j = 0; j < line_len_; ++j) {
+        if (i == 0) {
+          std::cout << get<0>(j) << ' ';
+          if (get<0>(j) < 10) std::cout << ' ';
+        }
+        if (i == 1) {
+          std::cout << get<1>(j) << ' ';
+          if (get<1>(j) < 10) std::cout << ' ';
+        }
+        if (i == 2) {
+          std::cout << get<2>(j) << ' ';
+          if (get<2>(j) < 10) std::cout << ' ';
+        }
+        if (i == 3) {
+          std::cout << get<3>(j) << ' ';
+          if (get<3>(j) < 10) std::cout << ' ';
+        }
+      }
+      std::cout << std::endl;
+    }
+#endif
   }
 
   graph_bipartite_type is_bipartite() const {
-    painting_map visited;
-    std::transform(cbegin(), cend(), std::inserter(visited, visited.end()),
-                   [id = 0](auto &&key) mutable {
-                     return std::make_pair(key, std::make_pair(Color::Grey,
-                                                               value_type {0}));
-                   });
+    serviceBipartiteLoad v_serv(nvertices_, {Color::Grey, 0});
 
-    auto &table = *this;
     for (size_type id = 0; id < nvertices_; ++id) {
-      auto top_id   = get<0>(id);
-      auto top_vert = get<1>(top_id);
-      if (visited[top_vert].first == Color::Grey) {
-        visited[top_vert].first = Color::Blue; // first vertex is always blue
+      if (v_serv[id].color_ == Color::Grey) {
+        v_serv[id].color_ = Color::Blue; // first vertex is always blue
       }
-      for (size_type curr_id = get<2>(id);
-           curr_id != id; curr_id = get<2>(curr_id)) {
+      for (size_type curr_id = get<2>(id); curr_id != id;
+                                           curr_id = get<2>(curr_id)) {
         auto column = curr_id + get_edge_dir(curr_id);
-        if (!is_right_painted(top_vert, get<1>(column), visited)) {
-          return get_odd_length_cicle(visited, get<1>(column), top_vert);
+        if (!is_right_painted(id, get<3>(column), v_serv)) {
+          return get_odd_length_cicle(v_serv, get<3>(column), id);
         }
       }
     }
     // divide the vertices of the graph into two parts
     graph_bipartite_type two_fractions(2);
-    for (auto &&vert : table) {
-      visited[vert].first == Color::Blue ? two_fractions[0].push_back(vert) :
-                                           two_fractions[1].push_back(vert); 
+    for (size_type id = 0; id < nvertices_; id++) {
+      auto vert = get<1>(id);
+      v_serv[id].color_ == Color::Blue ? two_fractions[0].push_back(vert) :
+                                         two_fractions[1].push_back(vert); 
     }
  
     return two_fractions;
@@ -128,7 +147,7 @@ class Graph final {
   const ProxyBracket operator[] (size_type nline) const {
     return ProxyBracket(std::addressof(const_cast<reference>(data_[nline * line_len_])));
   }
-  
+ 
   template <std::forward_iterator FIter>
   void set_table_sizes(FIter begin, FIter end, helper_map &vertices) {
     // counting unique vertices
@@ -142,7 +161,7 @@ class Graph final {
     line_len_  = nvertices_ + nedges_ * EdgeAddition;
     data_.reserve(line_len_ * NLine);
   }
-    
+
   void fill_with_trivial_data() {
     for (size_type ident = 0; ident < line_len_; ++ident) {
       emplace<0>(ident, ident);
@@ -152,23 +171,30 @@ class Graph final {
       }
     }
   }
-  
+ 
   template <std::forward_iterator FIter>
   void set_edges_info(FIter begin, FIter end, helper_map &vertices) {
-    for (size_type curr_id = nvertices_; begin != end;
-         ++begin) {
+    auto tmp_it = begin;
+    for (size_type curr_id = nvertices_; tmp_it != end; ++tmp_it) {
+      for (auto vertex : {tmp_it->first, tmp_it->second}) {
+        emplace<3>(curr_id, vertices[vertex]);
+        ++curr_id;
+      }
+    }
+
+    for (size_type curr_id = nvertices_; begin != end; ++begin) {
       for (auto vertex : {begin->first, begin->second}) {
         emplace<1>(curr_id, vertex);
-        
+ 
         auto vert_id = vertices[vertex];
         emplace<2>(curr_id, get<2>(vert_id));
         emplace<2>(vert_id, curr_id);
-        emplace<3>(curr_id, vert_id);
 
         vertices[vertex] = curr_id;
         ++curr_id;
       }
     }
+
     for (auto &&[vert, end_edge] : vertices) {
       auto vert_id = get<2>(end_edge);
       get<3>(vert_id) = end_edge;
@@ -181,7 +207,7 @@ class Graph final {
       emplace<1>(id, get<1>(vert_id));
     }
   }
-  
+ 
   // filling a table depending on the type
   template <size_type LineId, typename U>
   void emplace(size_type column, U&& value) {
@@ -224,35 +250,35 @@ class Graph final {
       }
     }
   }
-
-  bool is_right_painted(value_type top_vert, value_type neighbour_vert,
-                        painting_map &p_map) const {
+ 
+  bool is_right_painted(size_type top_vert, size_type neighbour_vert,
+                        serviceBipartiteLoad &v_serv) const {
     auto draw_neighbour_vertex = [](Color own_color) {
       return own_color == Color::Blue ? Color::Red : Color::Blue;
     };
  
-    if (p_map[neighbour_vert].first == Color::Grey) {
-      p_map[neighbour_vert].first = draw_neighbour_vertex(p_map[top_vert].first);
+    if (v_serv[neighbour_vert].color_ == Color::Grey) {
+      v_serv[neighbour_vert].color_ = draw_neighbour_vertex(v_serv[top_vert].color_);
       // saving the coloring vertex 
-      p_map[neighbour_vert].second = top_vert;
-    } else if (p_map[neighbour_vert].first == p_map[top_vert].first) {
+      v_serv[neighbour_vert].parent_ = top_vert;
+    } else if (v_serv[neighbour_vert].color_ == v_serv[top_vert].color_) {
       return false;
     }
     return true;
   }
 
-  graph_bipartite_type get_odd_length_cicle(painting_map &p_map,
-                                            value_type failed_edge,
-                                            value_type curr_edge) const {
-    graph_bipartite_type odd_length_cicle(1, {failed_edge}); 
-    for (auto end_edge = p_map[failed_edge].second;
-         curr_edge != end_edge; curr_edge = p_map[curr_edge].second) {
-      odd_length_cicle[0].push_back(curr_edge); 
+  graph_bipartite_type get_odd_length_cicle(serviceBipartiteLoad &v_serv,
+                                            size_type failed_edge,
+                                            size_type curr_edge) const {
+    graph_bipartite_type odd_length_cicle(1, {get<1>(failed_edge)}); 
+    for (auto end_edge = v_serv[failed_edge].parent_;
+         curr_edge != end_edge; curr_edge = v_serv[curr_edge].parent_) {
+      odd_length_cicle[0].push_back(get<1>(curr_edge));
     }
-    odd_length_cicle[0].push_back(curr_edge); 
+    odd_length_cicle[0].push_back(get<1>(curr_edge));
     return odd_length_cicle;
   }
-
+  
   // edge directory
   int get_edge_dir(size_type edge_number) const noexcept {
     return edge_number % 2 == nvertices_ % 2 ? 1 : -1;
@@ -304,6 +330,15 @@ class Graph final {
     }
    private:
     pointer line_ptr_;
+  };
+
+  struct BipartiteVertexService final {
+    BipartiteVertexService(Color col, size_type parent)
+        : color_ {col},
+          parent_ {parent} {}
+
+    Color color_;
+    size_type parent_;
   };
 
 };
