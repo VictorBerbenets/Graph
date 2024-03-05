@@ -7,12 +7,11 @@
 namespace yLAB {
 
 
-template <typename T, typename VertexLoad, typename EdgeLoad>
+template <typename T, typename EdgeLoad>
 class GraphIterator {
 public:
     using value_type        = T;
-    using variant           = std::variant<std::size_t, value_type, VertexLoad,
-                                           EdgeLoad>;
+    using variant           = std::variant<std::size_t, value_type, EdgeLoad>;
     using iterator_category = std::contiguous_iterator_tag;
     using pointer           = variant*;
     using reference         = value_type&;
@@ -59,7 +58,7 @@ public:
         return ptr_ - rhs.ptr_;
     }
 
-    template <std::integral, typename, typename> friend class Graph;
+    template <std::integral, typename> friend class Graph;
 private:
     const_pointer ptr_;
 

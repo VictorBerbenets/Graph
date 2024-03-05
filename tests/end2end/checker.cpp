@@ -28,7 +28,7 @@ std::stringstream get_data(std::istream& is) {
     load_data.push_back(load);
   }
 
-  yLAB::Graph<int, int, int> gr(edges.begin(), edges.end(),
+  yLAB::Graph<int, int> gr(edges.begin(), edges.end(),
                               load_data.begin(), load_data.end());
   std::stringstream str_stream;
 

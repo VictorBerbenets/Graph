@@ -17,23 +17,20 @@
 
 namespace yLAB {
 
-template <std::integral T, typename VertexLoad = int,
-          typename EdgeLoad = int>
+template <std::integral T, typename EdgeLoad = int>
 class Graph final {
   enum class Color : char {Grey, Blue, Red}; // for coloring vertices
  public:
   using size_type    = std::size_t;
   using value_type   = T;
-  using table_type   = std::variant<size_type, value_type, VertexLoad,
-                                        EdgeLoad>;
+  using edge_type    = EdgeLoad;
+  using table_type   = std::variant<size_type, value_type, EdgeLoad>;
   using pointer                = std::vector<table_type>::pointer;
   using reference              = std::vector<table_type>::reference;
   using const_pointer          = std::vector<table_type>::const_pointer;
   using const_reference        = std::vector<table_type>::const_reference;
   using edge                   = std::pair<value_type, value_type>;
-  using edge_type              = EdgeLoad;
-  using vertex_type            = VertexLoad;
-  using iterator               = GraphIterator<value_type, VertexLoad, EdgeLoad>;
+  using iterator               = GraphIterator<value_type, EdgeLoad>;
   using const_iterator         = iterator;
  private:
   static constexpr size_type NLine        = 5; // table lines
@@ -42,7 +39,7 @@ class Graph final {
   class ProxyBracket;
   struct BipartiteVertexService;
 
-  using helper_map           = std::unordered_map<vertex_type, size_type>;
+  using helper_map           = std::unordered_map<value_type, size_type>;
   using serviceBipartiteData = std::vector<BipartiteVertexService>;
   using edge_load_pair       = std::pair<edge, edge_type>;
   using graph_bipartite_type = std::vector<std::vector<value_type>>;
@@ -74,7 +71,6 @@ class Graph final {
     set_table_sizes(begin, end, vertices); 
     fill_with_trivial_data();
     set_edges_info(begin, end, vertices);
-    set_vertex_info();
   }
 
   graph_bipartite_type is_bipartite() const {
@@ -86,15 +82,15 @@ class Graph final {
       }
       for (auto curr_id = get<2>(id); curr_id != id; curr_id = get<2>(curr_id)) {
         auto column = curr_id + get_edge_dir(curr_id);
-        if (!is_right_painted(id, get<3>(column), service_data)) {
-          return get_odd_length_cicle(service_data, get<3>(column), id);
+        if (!is_right_painted(id, get<1>(column), service_data)) {
+          return get_odd_length_cicle(service_data, get<1>(column), id);
         }
       }
     }
     // divide the vertices of the graph into two parts
     graph_bipartite_type two_fractions(2);
     for (size_type id = 0; id < nvertices_; id++) {
-      auto vert = get<1>(id);
+      auto vert = get<4>(id);
       service_data[id].color_ == Color::Blue ? two_fractions[0].push_back(vert) :
                                                two_fractions[1].push_back(vert); 
     }
@@ -106,11 +102,11 @@ class Graph final {
   size_type e_size() const noexcept { return nedges_; }
 
   // psevdo iterators which walks on vertices
-  iterator begin() noexcept { return std::addressof(data_[line_len_]); }
+  iterator begin() noexcept { return std::addressof(data_[3 * line_len_]); }
   iterator end()   noexcept { return begin() + nvertices_; }
-  const_iterator begin() const noexcept { return std::addressof(data_[line_len_]); }
+  const_iterator begin() const noexcept { return std::addressof(data_[3 * line_len_]); }
   const_iterator end()   const noexcept { return begin() + nvertices_; }
-  const_iterator cbegin() const noexcept { return std::addressof(data_[line_len_]); }
+  const_iterator cbegin() const noexcept { return std::addressof(data_[3 * line_len_]); }
   const_iterator cend()   const noexcept { return cbegin() + nvertices_; }
  private:
 
@@ -140,6 +136,7 @@ class Graph final {
     for (size_type ident = 0; ident < line_len_; ++ident) {
       emplace<0>(ident, ident);
       if (ident < nvertices_) {
+        emplace<1>(ident, 0);
         emplace<2>(ident, ident);
         emplace<3>(ident, ident);
       }
@@ -148,23 +145,21 @@ class Graph final {
  
   template <std::forward_iterator FIter>
   void set_edges_info(FIter begin, FIter end, helper_map &vertices) {
-    auto tmp_it = begin;
-    for (size_type curr_id = nvertices_; tmp_it != end; ++tmp_it) {
-      for (auto vertex : {tmp_it->first, tmp_it->second}) {
-        emplace<3>(curr_id, vertices[vertex]);
-        ++curr_id;
-      }
+    for (auto &&[vertex, id] : vertices) {
+      emplace<4>(id, vertex); 
     }
-
+    
+    auto copy_map = vertices;
     for (size_type curr_id = nvertices_; begin != end; ++begin) {
       for (auto vertex : {begin->first, begin->second}) {
-        emplace<1>(curr_id, vertex);
- 
         auto vert_id = vertices[vertex];
         emplace<2>(curr_id, get<2>(vert_id));
         emplace<2>(vert_id, curr_id);
+        emplace<3>(curr_id, vert_id);
 
         vertices[vertex] = curr_id;
+ 
+        emplace<1>(curr_id, copy_map[vertex]);
         ++curr_id;
       }
     }
@@ -174,26 +169,17 @@ class Graph final {
       get<3>(vert_id) = end_edge;
     }
   }
-
-  void set_vertex_info() {
-    for (size_type id = 0; id < nvertices_; ++id) {
-      auto vert_id = get<2>(id);
-      emplace<1>(id, get<1>(vert_id));
-    }
-  }
  
   // filling a table depending on the type
   template <size_type LineId, typename U>
   void emplace(size_type column, U&& value) {
-    if constexpr (LineId != 1 && LineId != 4) {
+    if constexpr (LineId != 4) {
       (*this)[LineId][column]. template emplace<0>(std::forward<U>(value));
-    } else if (LineId == 1) {
-      (*this)[LineId][column]. template emplace<1>(std::forward<U>(value));
     } else {
       if (column < nvertices_) {
-        (*this)[LineId][column]. template emplace<2>(std::forward<U>(value));
+        (*this)[LineId][column]. template emplace<1>(std::forward<U>(value));
       } else {
-        (*this)[LineId][column]. template emplace<3>(std::forward<U>(value));
+        (*this)[LineId][column]. template emplace<2>(std::forward<U>(value));
       }
     }
   }
@@ -212,15 +198,13 @@ class Graph final {
 
   template <size_type LineId>
   const auto &get_impl(size_type column) const {
-    if constexpr (LineId != 1 && LineId != 4) {
+    if constexpr (LineId != 4) {
       return std::get<0>((*this)[LineId][column]);
-    } else if (LineId == 1) {
-      return std::get<1>((*this)[LineId][column]);
     } else {
       if (column < nvertices_) {
-        return std::get<2>((*this)[LineId][column]);
+        return std::get<1>((*this)[LineId][column]);
       } else {
-        return std::get<3>((*this)[LineId][column]);
+        return std::get<2>((*this)[LineId][column]);
       }
     }
   }
@@ -244,12 +228,12 @@ class Graph final {
   graph_bipartite_type get_odd_length_cicle(serviceBipartiteData &service_data,
                                             size_type failed_edge,
                                             size_type curr_edge) const {
-    graph_bipartite_type odd_length_cicle(1, {get<1>(failed_edge)}); 
+    graph_bipartite_type odd_length_cicle(1, {get<4>(failed_edge)}); 
     for (auto end_edge = service_data[failed_edge].parent_;
          curr_edge != end_edge; curr_edge = service_data[curr_edge].parent_) {
-      odd_length_cicle[0].push_back(get<1>(curr_edge));
+      odd_length_cicle[0].push_back(get<4>(curr_edge));
     }
-    odd_length_cicle[0].push_back(get<1>(curr_edge));
+    odd_length_cicle[0].push_back(get<4>(curr_edge));
     return odd_length_cicle;
   }
   
