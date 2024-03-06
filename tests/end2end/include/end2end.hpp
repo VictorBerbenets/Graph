@@ -24,8 +24,8 @@ class generator final {
   using generator_type    = std::mt19937;
   using distribution_type = std::uniform_int_distribution<T>;
 
-  static constexpr size_type MAX_VERTECES_NUMBER = 10000;
-  static constexpr size_type MIN_VERTECES_NUMBER = 2;
+  static constexpr size_type MAX_VERTECES_NUMBER = 1000000;
+  static constexpr size_type MIN_VERTECES_NUMBER = 2000;
 
   template <std::integral U>
   U random_value(U min_val, U max_val) {
@@ -71,7 +71,7 @@ class generator final {
     std::vector<std::pair<value_type, value_type>> edges;
     for (auto &&val : first_share) {
       std::list<value_type> used_vertices;
-      for (auto pair_counter = 0, max_pairs = random_value(1ul, second_share.size());
+      for (auto pair_counter = 0, max_pairs = random_value(1ul, second_share.size() % 10);
            pair_counter < max_pairs; ++pair_counter) {
         auto second_vertex = second_share.front();
         used_vertices.push_back(second_vertex);
