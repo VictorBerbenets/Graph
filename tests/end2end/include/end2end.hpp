@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <unordered_set>
 #include <set>
+#include <list>
 #include <utility>
 #include <string>
 
@@ -23,7 +24,7 @@ class generator final {
   using generator_type    = std::mt19937;
   using distribution_type = std::uniform_int_distribution<T>;
 
-  static constexpr size_type MAX_VERTECES_NUMBER = 1000;
+  static constexpr size_type MAX_VERTECES_NUMBER = 10000;
   static constexpr size_type MIN_VERTECES_NUMBER = 2;
 
   template <std::integral U>
@@ -58,8 +59,8 @@ class generator final {
     auto first_share_size  = random_value(1ul, verteces_number - 1);
     auto second_share_size = verteces_number - first_share_size;
 
-    std::vector<value_type> first_share(first_share_size);
-    std::vector<value_type> second_share(second_share_size);
+    std::list<value_type> first_share(first_share_size);
+    std::list<value_type> second_share(second_share_size);
 
     value_type value {1};
     std::generate(first_share.begin(), first_share.end(),
@@ -69,16 +70,15 @@ class generator final {
 
     std::vector<std::pair<value_type, value_type>> edges;
     for (auto &&val : first_share) {
-      std::unordered_set<value_type> used_vertices;
+      std::list<value_type> used_vertices;
       for (auto pair_counter = 0, max_pairs = random_value(1ul, second_share.size());
            pair_counter < max_pairs; ++pair_counter) {
-        auto second_vertex = *std::find_if(second_share.begin(), second_share.end(),
-                              [&used_vertices](auto &&val) {
-                                return used_vertices.find(val) == used_vertices.end();
-                              });
-        used_vertices.insert(second_vertex);
+        auto second_vertex = second_share.front();
+        used_vertices.push_back(second_vertex);
+        second_share.pop_front();
         edges.push_back(std::make_pair(val, second_vertex));
       }
+      second_share.splice(second_share.begin(), used_vertices);
     }
 
     std::string test_name = "test" + std::to_string(test_number) + ".txt";

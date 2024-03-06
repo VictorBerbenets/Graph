@@ -24,7 +24,7 @@ class Graph final {
   using size_type    = std::size_t;
   using value_type   = T;
   using edge_type    = EdgeLoad;
-  using table_type   = std::variant<size_type, value_type, EdgeLoad>;
+  using table_type   = std::variant<int, value_type, EdgeLoad>;
   using pointer                = std::vector<table_type>::pointer;
   using reference              = std::vector<table_type>::reference;
   using const_pointer          = std::vector<table_type>::const_pointer;
@@ -68,7 +68,7 @@ class Graph final {
   Graph(Iter begin, Iter end) {
     helper_map vertices;
 
-    set_table_sizes(begin, end, vertices); 
+    set_table_sizes(begin, end, vertices);
     fill_with_trivial_data();
     set_edges_info(begin, end, vertices);
   }
@@ -76,7 +76,7 @@ class Graph final {
   graph_bipartite_type is_bipartite() const {
     serviceBipartiteData service_data(nvertices_, {Color::Grey, 0});
 
-    for (size_type id = 0; id < nvertices_; ++id) {
+    for (auto id = 0; id < nvertices_; ++id) {
       if (service_data[id].color_ == Color::Grey) {
         service_data[id].color_ = Color::Blue; // first vertex is always blue
       }
@@ -148,7 +148,7 @@ class Graph final {
     for (auto &&[vertex, id] : vertices) {
       emplace<4>(id, vertex); 
     }
-    
+
     auto copy_map = vertices;
     for (size_type curr_id = nvertices_; begin != end; ++begin) {
       for (auto vertex : {begin->first, begin->second}) {

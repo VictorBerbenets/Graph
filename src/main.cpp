@@ -38,23 +38,27 @@ void print_bipartite_graph(const yLAB::Graph<T> &gr) {
   }
 }
 
-} // <--- namespace
-
-int main() {
-  std::vector<std::pair<int, int>> edges;
-  std::vector<int> load_data;
+auto get_data(std::istream& is) {
+  std::vector<std::pair<int, int>> data;
 
   std::string line;
-  while(std::getline(std::cin >> std::ws, line)) {
+  while(std::getline(is >> std::ws, line)) {
     std::remove(line.begin(), line.end(), '-');
     std::remove(line.begin(), line.end(), ',');
 
     std::istringstream istream {line};
-    int v1 {0}, v2 {0}, load{0};
+    int v1 {0}, v2 {0};
     istream >> v1 >> v2;
-    edges.emplace_back(std::make_pair(v1, v2));
-    load_data.push_back(load);
+    data.emplace_back(std::make_pair(v1, v2));
   }
+  return data;
+}
+
+} // <--- namespace
+
+int main() {
+  std::vector<std::pair<int, int>> edges = get_data(std::cin);
+  std::vector<int> load_data;
 
   yLAB::Graph<int> g(edges.begin(), edges.end(),
                     load_data.begin(), load_data.end());
