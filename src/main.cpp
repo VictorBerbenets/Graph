@@ -43,12 +43,12 @@ auto get_data(std::istream& is) {
 
   std::string line;
   while(std::getline(is >> std::ws, line)) {
-    std::remove(line.begin(), line.end(), '-');
-    std::remove(line.begin(), line.end(), ',');
-
     std::istringstream istream {line};
+    std::remove(line.begin(), line.end(), ',');
     int v1 {0}, v2 {0};
-    istream >> v1 >> v2;
+    char minus;
+    istream >> v1 >> minus >> minus >> v2;
+
     data.emplace_back(std::make_pair(v1, v2));
   }
   return data;
