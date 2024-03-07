@@ -31,8 +31,8 @@ function run_tests {
         echo -e "${white}---end2end testing---${usual}"
         for ((i = 1; i <= ${tests_number}; ++i))
         do
-                tmp_check="${tests_dir}/test${i}.txt"
-                ans_file="${answs_dir}/ans${i}.txt"
+                tmp_check="${tests_dir}test${i}.txt"
+                ans_file="${answs_dir}ans${i}.txt"
 
                 echo -n -e "${purple}Test ${i}: ${usual}\n"
                 ${checker} ${tmp_check} ${ans_file} > compare_file.txt

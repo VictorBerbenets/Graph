@@ -102,11 +102,11 @@ class Graph final {
   size_type e_size() const noexcept { return nedges_; }
 
   // psevdo iterators which walks on vertices
-  iterator begin() noexcept { return std::addressof(data_[3 * line_len_]); }
+  iterator begin() noexcept { return std::addressof(data_[4 * line_len_]); }
   iterator end()   noexcept { return begin() + nvertices_; }
-  const_iterator begin() const noexcept { return std::addressof(data_[3 * line_len_]); }
+  const_iterator begin() const noexcept { return std::addressof(data_[4 * line_len_]); }
   const_iterator end()   const noexcept { return begin() + nvertices_; }
-  const_iterator cbegin() const noexcept { return std::addressof(data_[3 * line_len_]); }
+  const_iterator cbegin() const noexcept { return std::addressof(data_[4 * line_len_]); }
   const_iterator cend()   const noexcept { return cbegin() + nvertices_; }
  private:
 

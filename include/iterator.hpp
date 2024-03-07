@@ -11,7 +11,7 @@ template <typename T, typename EdgeLoad>
 class GraphIterator {
 public:
     using value_type        = T;
-    using variant           = std::variant<std::size_t, value_type, EdgeLoad>;
+    using variant           = std::variant<int, value_type, EdgeLoad>;
     using iterator_category = std::contiguous_iterator_tag;
     using pointer           = variant*;
     using reference         = value_type&;
