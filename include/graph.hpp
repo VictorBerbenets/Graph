@@ -6,7 +6,7 @@
 #include <concepts>
 #include <optional>
 #include <utility>
-#include <tuple>
+#include <stack>
 #include <initializer_list>
 #include <type_traits>
 #include <iterator>
@@ -21,17 +21,17 @@ template <std::integral T, typename EdgeLoad = int>
 class Graph final {
   enum class Color : char {Grey, Blue, Red}; // for coloring vertices
  public:
-  using size_type    = std::size_t;
-  using value_type   = T;
-  using edge_type    = EdgeLoad;
-  using table_type   = std::variant<int, value_type, EdgeLoad>;
-  using pointer                = std::vector<table_type>::pointer;
-  using reference              = std::vector<table_type>::reference;
-  using const_pointer          = std::vector<table_type>::const_pointer;
-  using const_reference        = std::vector<table_type>::const_reference;
-  using edge                   = std::pair<value_type, value_type>;
-  using iterator               = GraphIterator<value_type, EdgeLoad>;
-  using const_iterator         = iterator;
+  using size_type        = std::size_t;
+  using value_type       = T;
+  using edge_type        = EdgeLoad;
+  using table_type       = std::variant<int, value_type, EdgeLoad>;
+  using pointer          = std::vector<table_type>::pointer;
+  using reference        = std::vector<table_type>::reference;
+  using const_pointer    = std::vector<table_type>::const_pointer;
+  using const_reference  = std::vector<table_type>::const_reference;
+  using edge             = std::pair<value_type, value_type>;
+  using iterator         = GraphIterator<value_type, EdgeLoad>;
+  using const_iterator   = iterator;
  private:
   static constexpr size_type NLine        = 5; // table lines
   static constexpr size_type EdgeAddition = 2; // every edge is stored in two cells
@@ -75,15 +75,21 @@ class Graph final {
 
   graph_bipartite_type is_bipartite() const {
     serviceBipartiteData service_data(nvertices_, {Color::Grey, 0});
-
-    for (auto id = 0; id < nvertices_; ++id) {
+   
+    std::stack<size_type> verts;
+    for (size_type id = 0; id < nvertices_; ++id) {
       if (service_data[id].color_ == Color::Grey) {
-        service_data[id].color_ = Color::Blue; // first vertex is always blue
+        service_data[id].color_ = Color::Blue; // firverts vertex is always blue
+        verts.push(id);
       }
-      for (auto curr_id = get<2>(id); curr_id != id; curr_id = get<2>(curr_id)) {
-        auto column = curr_id + get_edge_dir(curr_id);
-        if (!is_right_painted(id, get<1>(column), service_data)) {
-          return get_odd_length_cicle(service_data, get<1>(column), id);
+      while(!verts.empty()) {
+        auto top = verts.top();
+        verts.pop();
+        for (size_type curr_id = get<2>(top); curr_id != top; curr_id = get<2>(curr_id)) {
+          auto column = curr_id + get_edge_dir(curr_id);
+          if (!is_right_painted(top, get<1>(column), verts, service_data)) {
+            return get_odd_length_cicle(top, get<1>(column), service_data);
+          }
         }
       }
     }
@@ -210,6 +216,7 @@ class Graph final {
   }
  
   bool is_right_painted(size_type top_vert, size_type neighbour_vert,
+                        std::stack<size_type> &verts,
                         serviceBipartiteData &service_data) const {
     auto draw_neighbour_vertex = [](Color own_color) {
       return own_color == Color::Blue ? Color::Red : Color::Blue;
@@ -217,6 +224,7 @@ class Graph final {
  
     if (service_data[neighbour_vert].color_ == Color::Grey) {
       service_data[neighbour_vert].color_ = draw_neighbour_vertex(service_data[top_vert].color_);
+      verts.push(neighbour_vert);
       // saving the coloring vertex 
       service_data[neighbour_vert].parent_ = top_vert;
     } else if (service_data[neighbour_vert].color_ == service_data[top_vert].color_) {
@@ -225,9 +233,9 @@ class Graph final {
     return true;
   }
 
-  graph_bipartite_type get_odd_length_cicle(serviceBipartiteData &service_data,
+  graph_bipartite_type get_odd_length_cicle(size_type curr_edge,
                                             size_type failed_edge,
-                                            size_type curr_edge) const {
+                                            serviceBipartiteData &service_data) const {
     graph_bipartite_type odd_length_cicle(1, {get<4>(failed_edge)}); 
     for (auto end_edge = service_data[failed_edge].parent_;
          curr_edge != end_edge; curr_edge = service_data[curr_edge].parent_) {
