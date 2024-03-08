@@ -74,21 +74,20 @@ class Graph final {
   }
 
   graph_bipartite_type is_bipartite() const {
-    serviceBipartiteData service_data(nvertices_, {Color::Grey, 0});
-   
-    std::stack<size_type> verts;
-    for (size_type id = 0; id < nvertices_; ++id) {
+    serviceBipartiteData service_data(nvertices_, {Color::Grey, 0, -1});
+    
+    int s {0};
+    for (size_type id = 0, u = 0; id < nvertices_; ++id) {
       if (service_data[id].color_ == Color::Grey) {
         service_data[id].color_ = Color::Blue; // first vertex is always blue
-        verts.push(id);
+        s = id;
       }
-      while(!verts.empty()) {
-        auto top = verts.top();
-        verts.pop();
-        for (size_type curr_id = get<2>(top); curr_id != top; curr_id = get<2>(curr_id)) {
+      while (s != -1) {
+        u = std::exchange(s, service_data[s].link_);
+        for (size_type curr_id = get<2>(u); curr_id != u; curr_id = get<2>(curr_id)) {
           auto column = curr_id + get_edge_dir(curr_id);
-          if (!is_right_painted(top, get<1>(column), verts, service_data)) {
-            return get_odd_length_cicle(top, get<1>(column), service_data);
+          if (!is_right_painted(u, get<1>(column), s, service_data)) {
+            return get_odd_length_cicle(u, get<1>(column), service_data);
           }
         }
       }
@@ -215,8 +214,7 @@ class Graph final {
     }
   }
  
-  bool is_right_painted(size_type top_vert, size_type neighbour_vert,
-                        std::stack<size_type> &verts,
+  bool is_right_painted(size_type top_vert, size_type neighbour_vert, int &s,
                         serviceBipartiteData &service_data) const {
     auto draw_neighbour_vertex = [](Color own_color) {
       return own_color == Color::Blue ? Color::Red : Color::Blue;
@@ -224,7 +222,8 @@ class Graph final {
  
     if (service_data[neighbour_vert].color_ == Color::Grey) {
       service_data[neighbour_vert].color_ = draw_neighbour_vertex(service_data[top_vert].color_);
-      verts.push(neighbour_vert);
+      service_data[neighbour_vert].link_ = s;
+      s = neighbour_vert;
       // saving the coloring vertex 
       service_data[neighbour_vert].parent_ = top_vert;
     } else if (service_data[neighbour_vert].color_ == service_data[top_vert].color_) {
@@ -299,12 +298,14 @@ class Graph final {
   };
 
   struct BipartiteVertexService final {
-    BipartiteVertexService(Color col, size_type parent)
+    BipartiteVertexService(Color col, size_type parent, int link)
         : color_ {col},
-          parent_ {parent} {}
+          parent_ {parent},
+          link_ {link} {}
 
     Color color_;
     size_type parent_;
+    int link_;
   };
 
 };
