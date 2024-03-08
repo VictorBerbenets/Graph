@@ -76,18 +76,19 @@ class Graph final {
   graph_bipartite_type is_bipartite() const {
     serviceBipartiteData service_data(nvertices_, {Color::Grey, 0, -1});
     
-    int s {0};
-    for (size_type id = 0, u = 0; id < nvertices_; ++id) {
+    int stack_top {0};
+    for (size_type id = 0, painted_vert = 0; id < nvertices_; ++id) {
       if (service_data[id].color_ == Color::Grey) {
         service_data[id].color_ = Color::Blue; // first vertex is always blue
-        s = id;
+        stack_top = id;
       }
-      while (s != -1) {
-        u = std::exchange(s, service_data[s].link_);
-        for (size_type curr_id = get<2>(u); curr_id != u; curr_id = get<2>(curr_id)) {
+      while (stack_top != -1) {
+        painted_vert = std::exchange(stack_top, service_data[stack_top].link_);
+        for (size_type curr_id = get<2>(painted_vert); curr_id != painted_vert;
+             curr_id = get<2>(curr_id)) {
           auto column = curr_id + get_edge_dir(curr_id);
-          if (!is_right_painted(u, get<1>(column), s, service_data)) {
-            return get_odd_length_cicle(u, get<1>(column), service_data);
+          if (!is_right_painted(painted_vert, get<1>(column), stack_top, service_data)) {
+            return get_odd_length_cicle(painted_vert, get<1>(column), service_data);
           }
         }
       }
@@ -214,7 +215,7 @@ class Graph final {
     }
   }
  
-  bool is_right_painted(size_type top_vert, size_type neighbour_vert, int &s,
+  bool is_right_painted(size_type top_vert, size_type neighbour_vert, int &stack_top,
                         serviceBipartiteData &service_data) const {
     auto draw_neighbour_vertex = [](Color own_color) {
       return own_color == Color::Blue ? Color::Red : Color::Blue;
@@ -222,7 +223,7 @@ class Graph final {
  
     if (service_data[neighbour_vert].color_ == Color::Grey) {
       service_data[neighbour_vert].color_ = draw_neighbour_vertex(service_data[top_vert].color_);
-      service_data[neighbour_vert].link_  = std::exchange(s, neighbour_vert);
+      service_data[neighbour_vert].link_  = std::exchange(stack_top, neighbour_vert);
       // saving the coloring vertex 
       service_data[neighbour_vert].parent_ = top_vert;
     } else if (service_data[neighbour_vert].color_ == service_data[top_vert].color_) {
