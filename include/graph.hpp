@@ -79,7 +79,7 @@ class Graph final {
     std::stack<size_type> verts;
     for (size_type id = 0; id < nvertices_; ++id) {
       if (service_data[id].color_ == Color::Grey) {
-        service_data[id].color_ = Color::Blue; // firverts vertex is always blue
+        service_data[id].color_ = Color::Blue; // first vertex is always blue
         verts.push(id);
       }
       while(!verts.empty()) {
