@@ -222,8 +222,7 @@ class Graph final {
  
     if (service_data[neighbour_vert].color_ == Color::Grey) {
       service_data[neighbour_vert].color_ = draw_neighbour_vertex(service_data[top_vert].color_);
-      service_data[neighbour_vert].link_ = s;
-      s = neighbour_vert;
+      service_data[neighbour_vert].link_  = std::exchange(s, neighbour_vert);
       // saving the coloring vertex 
       service_data[neighbour_vert].parent_ = top_vert;
     } else if (service_data[neighbour_vert].color_ == service_data[top_vert].color_) {
