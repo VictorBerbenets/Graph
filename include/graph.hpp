@@ -157,7 +157,7 @@ class Graph final {
 
     auto copy_map = vertices;
     for (size_type curr_id = nvertices_; begin != end; ++begin) {
-      for (auto vertex : {begin->first, begin->second}) {
+      for (auto &&vertex : {begin->first, begin->second}) {
         auto vert_id = vertices[vertex];
         emplace<2>(curr_id, get<2>(vert_id));
         emplace<2>(vert_id, curr_id);
