@@ -8,14 +8,19 @@
 #include <list>
 #include <utility>
 #include <string>
+#include <string_view>
 
 namespace testing {
 
 namespace dirs {
-  const std::string resource_dir = "../tests/end2end/resources";
-  const std::string tests_dir    = "../tests/end2end/resources/tests/";
-  const std::string ans_dir      = "../tests/end2end/resources/answers/";
-}
+  inline std::string to_string(std::string_view view) {
+    return {view.begin(), view.end()};
+  }
+
+  constexpr std::string_view resource_dir = "../tests/end2end/resources";
+  constexpr std::string_view tests_dir    = "../tests/end2end/resources/tests/";
+  constexpr std::string_view ans_dir      = "../tests/end2end/resources/answers/";
+} // <--- namespace dirs
 
 template<std::integral T>
 class generator final {
@@ -24,8 +29,8 @@ class generator final {
   using generator_type    = std::mt19937;
   using distribution_type = std::uniform_int_distribution<T>;
 
-  static constexpr size_type MAX_VERTECES_NUMBER = 1000000;
-  static constexpr size_type MIN_VERTECES_NUMBER = 2000;
+  static constexpr size_type MAX_VERTECES_NUMBER = 1000;
+  static constexpr size_type MIN_VERTECES_NUMBER = 2;
 
   template <std::integral U>
   U random_value(U min_val, U max_val) {
@@ -59,8 +64,8 @@ class generator final {
     auto first_share_size  = random_value(1ul, verteces_number - 1);
     auto second_share_size = verteces_number - first_share_size;
 
-    std::list<value_type> first_share(first_share_size);
-    std::list<value_type> second_share(second_share_size);
+    std::vector<value_type> first_share(first_share_size);
+    std::vector<value_type> second_share(second_share_size);
 
     value_type value {1};
     std::generate(first_share.begin(), first_share.end(),
@@ -69,22 +74,19 @@ class generator final {
                   [&value]() { return value++; });
 
     std::vector<std::pair<value_type, value_type>> edges;
-    for (auto &&val : first_share) {
-      std::list<value_type> used_vertices;
-      for (auto pair_counter = 0, max_pairs = random_value(1ul, second_share.size() % 10);
+    for (auto sz = second_share.size(); auto &&val : first_share) {
+      std::unordered_set<value_type> vertex_stor(second_share.begin(), second_share.end());
+      for (auto pair_counter = 0, max_pairs = random_value(1ul, sz);
            pair_counter < max_pairs; ++pair_counter) {
-        auto second_vertex = second_share.front();
-        used_vertices.push_back(second_vertex);
-        second_share.pop_front();
-        edges.push_back(std::make_pair(val, second_vertex));
+        auto random_vert = *vertex_stor.begin();
+        edges.push_back(std::make_pair(val, random_vert));
+        vertex_stor.erase(random_vert);
       }
-      second_share.splice(second_share.begin(), used_vertices);
     }
-
     std::string test_name = "test" + std::to_string(test_number) + ".txt";
     std::string ans_name  = "ans" + std::to_string(test_number) + ".txt";
-    std::ofstream test_file {dirs::tests_dir + test_name};
-    std::ofstream ans_file  {dirs::ans_dir + ans_name};
+    std::ofstream test_file {dirs::to_string(dirs::tests_dir) + test_name};
+    std::ofstream ans_file  {dirs::to_string(dirs::ans_dir) + ans_name};
 
     std::set<value_type> blue_vertices;
     std::set<value_type> red_vertices;
