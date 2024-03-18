@@ -1,0 +1,3 @@
+Graph isn't bipartite. Found odd-length cicle
+50 -- 1 -- 43 -- 50
+
