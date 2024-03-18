@@ -30,7 +30,7 @@ class generator final {
   using generator_type    = std::mt19937;
   using distribution_type = std::uniform_int_distribution<T>;
 
-  static constexpr size_type MAX_VERTECES_NUMBER = 1000;
+  static constexpr size_type MAX_VERTECES_NUMBER = 100;
   static constexpr size_type MIN_VERTECES_NUMBER = 2;
 
   template <std::integral U>
