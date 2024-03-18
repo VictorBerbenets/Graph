@@ -1,3 +1,5 @@
+#pragma once
+
 #include <vector>
 #include <concepts>
 #include <random>
@@ -5,7 +7,6 @@
 #include <filesystem>
 #include <unordered_set>
 #include <set>
-#include <list>
 #include <utility>
 #include <string>
 #include <string_view>
