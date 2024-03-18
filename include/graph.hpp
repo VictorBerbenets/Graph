@@ -17,14 +17,14 @@
 
 namespace yLAB {
 
-template <std::integral T, typename EdgeLoad = int>
+template <std::integral T, typename EdgeLoad = T>
 class Graph final {
   enum class Color : char {Grey, Blue, Red}; // for coloring vertices
  public:
   using size_type        = std::size_t;
   using value_type       = T;
   using edge_type        = EdgeLoad;
-  using table_type       = std::variant<int, value_type, EdgeLoad>;
+  using table_type       = std::variant<int, value_type, edge_type>;
   using pointer          = std::vector<table_type>::pointer;
   using reference        = std::vector<table_type>::reference;
   using const_pointer    = std::vector<table_type>::const_pointer;
