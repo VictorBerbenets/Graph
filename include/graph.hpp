@@ -58,8 +58,8 @@ class Graph final {
       : Graph(f_begin, f_end) {
     // adding a load to the edges
     for (auto load_id = nvertices_; i_begin != i_end; ++i_begin) {
-      emplace<4>(load_id, *i_begin);
-      load_id += 2;
+      emplace<4>(load_id++, *i_begin);
+      emplace<4>(load_id++, *i_begin);
     }
   }
 
