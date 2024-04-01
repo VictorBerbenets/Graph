@@ -12,6 +12,7 @@
 #include <iterator>
 #include <memory>
 #include <unordered_map>
+#include <variant>
 
 #include "iterator.hpp"
 
